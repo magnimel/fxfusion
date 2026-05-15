@@ -38,7 +38,7 @@ class FXFusionShapeProp(fx.Interpreter):
             elif node.op == 'get_attr':
                 result = _fetch_attr(node.target)
             elif node.op == 'call_function':
-                if node.target in (Fusion.fused_conv2d_bnorm2d_relu, Fusion.fused_conv2d_bnorm2d):
+                if node.target in (Fusion.fused_conv2d_relu, Fusion.fused_conv2d):
                     x, weight, bias, extra = _load_arg(node.args)
                     result = F.conv2d(input=x, weight=weight, bias=bias,
                         stride=extra["stride"],
