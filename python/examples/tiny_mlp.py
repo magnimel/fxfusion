@@ -1,5 +1,5 @@
-from fxfusion.passes.fusion_pass import FXFusionPass
-from fxfusion.passes.shape_prop import FXFusionShapeProp
+from fxfusion.passes.fusion_pass import FusionPass
+from fxfusion.compiler import FXFusionCompiler
 import torch.fx as fx
 import torch.nn as nn
 import torch
@@ -27,12 +27,11 @@ def main():
     
     model = TinyMLP()
     print(model)
-
-    fx_model : fx.GraphModule = FXFusionPass().run(model)
-    fx_model.graph.print_tabular()    
-    
+     
     input = torch.randn(1, 50)
-    FXFusionShapeProp(fx_model).propagate(input)
+    fx_model: fx.GraphModule = FXFusionCompiler().run(model, input)
+    
+    fx_model.graph.print_tabular() 
     
     for node in fx_model.graph.nodes:
         print(f"{node.name} : {node.meta['shape']} | {node.meta['dtype']} | {node.meta['device']}")
