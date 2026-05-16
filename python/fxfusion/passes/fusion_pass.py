@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import torch.fx as fx
 from typing import Type, Dict, Any, Tuple, Optional, List, cast
-from .fusion import FUSION_REGISTRY, FusionOp
+from fxfusion.passes.fusion import FUSION_REGISTRY, FusionOp
 
 
-class FXFusionPass:
+class FusionPass:
 
     def __init__(self, registry: Dict[int, FusionOp] = FUSION_REGISTRY) -> None:
         self.registry = registry

@@ -3,10 +3,10 @@ import torch.nn as nn
 import torch.fx as fx
 import torch.nn.functional as F
 from typing import Type, Dict, Any, Tuple, Optional, List, cast
-from .fusion import Fusion
+from fxfusion.passes.fusion import Fusion
 from torch.fx.node import map_arg
 
-class FXFusionShapeProp(fx.Interpreter):    
+class ShapePropPass(fx.Interpreter):    
     
     def __init__(self, fx_model: fx.GraphModule) -> None:
         super().__init__(fx_model)
