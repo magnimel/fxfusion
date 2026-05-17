@@ -6,10 +6,9 @@ from typing import Type, Dict, Any, Tuple, Optional, List, cast
 from fxfusion.passes.fusion import Fusion
 from torch.fx.node import map_arg
 
-class ShapePropPass(fx.Interpreter):    
+class ShapePropPass():    
     
     def __init__(self, fx_model: fx.GraphModule) -> None:
-        super().__init__(fx_model)
         self.fx_model : fx.GraphModule = fx_model
         self.graph : fx.Graph = self.fx_model.graph
         self.modules: Dict[str, Any] = dict(self.fx_model.named_modules())
