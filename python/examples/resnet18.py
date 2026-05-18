@@ -14,8 +14,6 @@ def main():
     
     fx_model.graph.print_tabular()    
     
-    for node in fx_model.graph.nodes:
-        print(node.name, " : ",node.meta["shape"], " | ", node.meta["dtype"], " | ", node.meta["device"], '\n')
             
 if __name__ == "__main__":
     main()

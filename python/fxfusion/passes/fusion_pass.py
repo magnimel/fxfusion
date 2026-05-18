@@ -169,7 +169,7 @@ class FusionPass:
         nodes_to_erase: List[fx.Node],
         extra: Optional[Dict[str, Any]]
     ) -> fx.Node:
-        """Handles Phase 2: Commits persistent buffers, rewires IR edges, and sweeps stale nodes."""
+        """Phase 2: Commits persistent buffers, rewires IR edges, and sweeps stale nodes."""
         assert self.fx_model is not None and self.graph is not None
         
         # Using base_name extracted directly from the native execution node identifier
