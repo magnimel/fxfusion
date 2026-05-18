@@ -1,0 +1,44 @@
+# Build
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.user
+*.suo
+*.vcxproj*
+*.xcodeproj*
+.DS_Store
+
+# Local
+notes.txt
+
+# Binaries
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+*.exe
+*.out
+*.ptx
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Profiling
+*.nsys-rep
+*.ncu-rep
