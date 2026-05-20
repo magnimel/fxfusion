@@ -46,8 +46,11 @@ class ShapePropPass():
                         groups=extra["groups"]
                     )
                 elif node.target == Fusion.fused_linear_relu:
-                    x, weight, bias, extra = _load_arg(node.args)
+                    x, weight, bias = _load_arg(node.args)
                     result = F.linear(input=x, weight=weight, bias=bias)
+                elif node.target == Fusion.fused_add_relu:
+                    a, b = _load_arg(node.args)
+                    result = a + b
                 else:
                     result = node.target(*_load_arg(node.args), **_load_arg(node.kwargs)) 
             elif node.op == 'call_method':
