@@ -17,7 +17,6 @@ class FusionSpec:
     bias: Optional[torch.Tensor] = None
     extra: Optional[Dict[str, Any]] = None
 
-
 class FusionPass:
     def __init__(self, registry: Dict[int, FusionOp] = FUSION_REGISTRY) -> None:
         self.registry = registry

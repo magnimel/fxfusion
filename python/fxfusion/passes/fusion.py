@@ -1,14 +1,16 @@
 import torch.nn as nn
+import operator
 from dataclasses import dataclass
-from typing import Callable, Dict, Tuple, Type
+from typing import Any, Dict, Tuple, Optional, List, Type, Union, Callable, cast
 
+PatternItem = Union[Type[Any], Any]
 
 @dataclass(frozen=True)
 class FusionOp:
     id: int
     name: str
     target: Callable[..., None]  
-    pattern: Tuple[Type[nn.Module], ...]
+    pattern: Tuple[PatternItem, ...]
 
 class Fusion:
 
@@ -18,11 +20,15 @@ class Fusion:
 
     @staticmethod
     def fused_conv2d(*args) -> None:
-        raise RuntimeError("Symbolic Op: fused_conv_norm_relu should only execute in the C++ runtime engine.")
+        raise RuntimeError("Symbolic Op: fused_conv2d should only execute in the C++ runtime engine.")
 
     @staticmethod
     def fused_conv2d_relu(*args) -> None:
-        raise RuntimeError("Symbolic Op: fused_conv_norm_relu should only execute in the C++ runtime engine.")
+        raise RuntimeError("Symbolic Op: fused_conv2d_relu should only execute in the C++ runtime engine.")
+    
+    @staticmethod
+    def fused_add_relu(*args) -> None:
+        raise RuntimeError("Symbolic Op: fused_add_relu should only execute in the C++ runtime engine.")
 
 FUSION_REGISTRY: Dict[int, FusionOp] = {
     0: FusionOp(
@@ -42,5 +48,11 @@ FUSION_REGISTRY: Dict[int, FusionOp] = {
         name="fused_conv2d",
         target=Fusion.fused_conv2d,
         pattern=(nn.Conv2d, nn.BatchNorm2d),
+    ),
+    3: FusionOp(
+        id=3,
+        name="fused_add_relu",
+        target=Fusion.fused_add_relu,
+        pattern=(operator.add, nn.ReLU),
     ),
 }
