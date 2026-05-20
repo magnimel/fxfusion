@@ -99,6 +99,9 @@ class MemoryPlanningPass:
         self.memory_manager: MemoryManager = MemoryManager()
     
     def _node_kind(self, node: fx.Node) -> str:
+        
+        if node.target in (torch.flatten, torch.reshape):
+            return "alias"
         if node.op == "placeholder":
             return "input"
         if node.op == "get_attr":
@@ -106,7 +109,7 @@ class MemoryPlanningPass:
         if node.op in ("call_function", "call_method", "call_module"):
             return "activation"
         if node.op == "output":
-            return "output"
+            return "alias"
         raise RuntimeError(f"Unsupported node op: {node.op}")
         
     def _compute_last_use(self, nodes: List[fx.Node]) -> Dict[fx.Node, int]:
@@ -151,7 +154,7 @@ class MemoryPlanningPass:
                             arg_alloc.size_bytes
                         )
                         
-            elif kind == 'output':
+            elif kind == 'alias':
                 returned_node = node.args[0]
                 
                 if isinstance(returned_node, fx.Node):
@@ -160,7 +163,7 @@ class MemoryPlanningPass:
                         node_name=node.name,
                         size_bytes=base_alloc.size_bytes,
                         mem_offset=base_alloc.mem_offset,
-                        kind="alias",
+                        kind=kind,
                         alias_of=returned_node.name,
                     )
                 else:
@@ -179,13 +182,13 @@ class MemoryPlanningPass:
     
     def print_alloc(self):
         print(f"ARENA TOP: {self.memory_manager.arena_top}")
-        print(f"{'Node Name':<30} | {'Kind':<12} | {'Size (B)':<10} | {'Offset'}")
+        print(f"{'Node Name':<35} | {'Kind':<12} | {'Size (B)':<10} | {'Offset'}")
         print("-" * 75)
 
         for node in self.graph.nodes:
             if 'alloc' in node.meta:
                 alloc = node.meta['alloc']
                 offset_val = str(alloc.mem_offset) if alloc.mem_offset is not None else "N/A"
-                print(f"{node.name:<30} | {alloc.kind:<12} | {alloc.size_bytes:<10} | {offset_val}")
+                print(f"{node.name:<35} | {alloc.kind:<12} | {alloc.size_bytes:<10} | {offset_val}")
             else:
-                print(f"{node.name:<30} | {'Missing Alloc Info'}")
+                print(f"{node.name:<35} | {'Missing Alloc Info'}")
