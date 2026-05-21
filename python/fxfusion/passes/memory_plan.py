@@ -16,6 +16,7 @@ class TensorAlloc:
 class MemoryPlan:
     spec_dict: Dict[str, TensorAlloc] = field(default_factory=dict)
     arena_size: int = 0
+    
 
 class MemoryManager:
     ALIGNMENT = 8
@@ -24,6 +25,8 @@ class MemoryManager:
         # The manager wholly owns the memory state
         self.free_blocks: List[Tuple[int, int]] = []
         self.arena_top: int = 0
+        self.peak_arena_top: int = 0
+        
 
     def _align(self, value: int) -> int:
         return ((value + self.ALIGNMENT - 1) // self.ALIGNMENT) * self.ALIGNMENT
@@ -42,6 +45,7 @@ class MemoryManager:
     def allocate(self, size: int) -> int:
         """Requests an aligned offset for a given size."""
         # 1. Try to find a recycled block (First-Fit)
+        
         for idx, (block_offset, block_size) in enumerate(self.free_blocks):
             aligned_offset = self._align(block_offset)
             
@@ -61,13 +65,24 @@ class MemoryManager:
         # 2. If no free block fits, bump the arena top
         aligned_offset = self._align(self.arena_top)
         self.arena_top = aligned_offset + size
+        self.peak_arena_top = max(self.peak_arena_top, self.arena_top)
         return aligned_offset
 
     def release(self, offset: int, size: int) -> None: 
         """Marks a node's memory as available and coalesces adjacent blocks."""
         self.free_blocks.append((offset, size))    
         self._coalesce()
-    
+        
+        
+        if self.free_blocks:
+            last_block_offset, last_block_size = self.free_blocks[-1]
+            
+            if last_block_offset + last_block_size == self.arena_top:
+                self.free_blocks.pop()
+                
+                self.arena_top = last_block_offset
+        
+        
     def _coalesce(self, DEBUG: bool = False) -> None: 
         if not self.free_blocks:
             return
@@ -100,7 +115,7 @@ class MemoryPlanningPass:
     
     def _node_kind(self, node: fx.Node) -> str:
         
-        if node.target in (torch.flatten, torch.reshape):
+        if node.op == "call_function" and node.target in (torch.flatten, torch.reshape):
             return "alias"
         if node.op == "placeholder":
             return "input"
@@ -177,11 +192,12 @@ class MemoryPlanningPass:
             plan.spec_dict[node.name] = alloc
             
         # The final arena size is whatever the manager dictates
-        plan.arena_size = self.memory_manager.arena_top
+        plan.arena_size = self.memory_manager.peak_arena_top
         return plan
     
     def print_alloc(self):
-        print(f"ARENA TOP: {self.memory_manager.arena_top}")
+        print(f"CURRENT ARENA TOP: {self.memory_manager.arena_top}")
+        print(f"PEAK ARENA SIZE: {self.memory_manager.peak_arena_top}")
         print(f"{'Node Name':<35} | {'Kind':<12} | {'Size (B)':<10} | {'Offset'}")
         print("-" * 75)
 
