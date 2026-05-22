@@ -26,14 +26,9 @@ class TinyMLP(nn.Module):
 def main():
     
     model = TinyMLP()
-    print(model)
-     
     input = torch.randn(1, 50)
     fx_model: fx.GraphModule = FXFusionCompiler().run(model, input)
     
-    fx_model.graph.print_tabular() 
-    
-            
 if __name__ == "__main__":
     main()
     
