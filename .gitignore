@@ -4,8 +4,8 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 compile_commands.json
-python/gen/
-src/gen/
+py/gen/
+csrc/gen/
 
 # IDE
 .vscode/

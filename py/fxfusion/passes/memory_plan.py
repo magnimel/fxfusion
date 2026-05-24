@@ -16,7 +16,6 @@ class TensorAlloc:
 class MemoryPlan:
     spec_dict: Dict[str, TensorAlloc] = field(default_factory=dict)
     arena_size: int = 0
-    
 
 class MemoryManager:
     ALIGNMENT = 8
@@ -124,7 +123,7 @@ class MemoryPlanningPass:
         if node.op in ("call_function", "call_method", "call_module"):
             return "activation"
         if node.op == "output":
-            return "alias"
+            return "output"
         raise RuntimeError(f"Unsupported node op: {node.op}")
         
     def _compute_last_use(self, nodes: List[fx.Node]) -> Dict[fx.Node, int]:
@@ -169,7 +168,7 @@ class MemoryPlanningPass:
                             arg_alloc.size_bytes
                         )
                         
-            elif kind == 'alias':
+            elif kind in ("alias", "output"):
                 returned_node = node.args[0]
                 
                 if isinstance(returned_node, fx.Node):
@@ -182,29 +181,29 @@ class MemoryPlanningPass:
                         alias_of=returned_node.name,
                     )
                 else:
-                    # Fallback for empty/unrecognized outputs
-                    alloc = TensorAlloc(node.name, 0, None, 'alias')
+                    alloc = TensorAlloc(node.name, 0, None, kind)
                 
             else:
                 raise RuntimeError(f"Unsupported node op: {node.op}")
 
             node.meta['alloc'] = alloc
             plan.spec_dict[node.name] = alloc
-            
+
         # The final arena size is whatever the manager dictates
         plan.arena_size = self.memory_manager.peak_arena_top
+        self.fx_model.meta["arena_size"] = plan.arena_size
+        
         return plan
     
-    def print_alloc(self):
-        print(f"CURRENT ARENA TOP: {self.memory_manager.arena_top}")
-        print(f"PEAK ARENA SIZE: {self.memory_manager.peak_arena_top}")
-        print(f"{'Node Name':<35} | {'Kind':<12} | {'Size (B)':<10} | {'Offset'}")
-        print("-" * 75)
+def print_alloc(fx_model: fx.GraphModule):
+    print(f"ARENA SIZE: {fx_model.meta["arena_size"]}")
+    print(f"{'Node Name':<35} | {'Kind':<12} | {'Size (B)':<10} | {'Offset'}")
+    print("-" * 75)
 
-        for node in self.graph.nodes:
-            if 'alloc' in node.meta:
-                alloc = node.meta['alloc']
-                offset_val = str(alloc.mem_offset) if alloc.mem_offset is not None else "N/A"
-                print(f"{node.name:<35} | {alloc.kind:<12} | {alloc.size_bytes:<10} | {offset_val}")
-            else:
-                print(f"{node.name:<35} | {'Missing Alloc Info'}")
+    for node in fx_model.graph.nodes:
+        if 'alloc' in node.meta:
+            alloc = node.meta['alloc']
+            offset_val = str(alloc.mem_offset) if alloc.mem_offset is not None else "N/A"
+            print(f"{node.name:<35} | {alloc.kind:<12} | {alloc.size_bytes:<10} | {offset_val}")
+        else:
+            print(f"{node.name:<35} | {'Missing Alloc Info'}")

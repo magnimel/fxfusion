@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-SCHEMA="schema/fxfusion.fbs"
-GEN_PY_ROOT="python/gen"
-GEN_CXX_ROOT="src/gen"
+SCHEMA="schema/graph.fbs"
+GEN_PY_ROOT="py/gen"
+GEN_CXX_ROOT="csrc/gen"
 
 mkdir -p "$GEN_PY_ROOT"
 mkdir -p "$GEN_CXX_ROOT"
