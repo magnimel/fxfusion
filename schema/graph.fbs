@@ -17,12 +17,17 @@ enum DType : byte {
 
 enum OpCode : short {
   Placeholder = 0,
-  FusedConv2d = 1,
-  FusedConv2dRelu = 2,
-  FusedLinearRelu = 3,
-  FusedAddRelu = 4,
-  MaxPool2d = 5,
-  AvgPool2d = 6
+  Conv2d = 1,
+  Conv2dRelu = 2,
+  Linear = 3,
+  LinearRelu = 4,
+  Add = 5,
+  AddRelu = 6,
+  Relu = 7,
+  MaxPool2d = 8,
+  AvgPool2d = 9,
+  View = 10,
+  AdaptiveAvgPool2d = 11
 }
 
 struct Dim3 {
@@ -48,11 +53,18 @@ table Pool2dAttrs {
   kernel_size:[int];
   stride:[int];
   padding:[int];
+  dilation:[int];
+  ceil_mode:bool = false;
+}
+
+table AdaptivePool2dAttrs {
+  output_size:[int];
 }
 
 union OpAttributes {
   Conv2dAttrs,
-  Pool2dAttrs
+  Pool2dAttrs,
+  AdaptivePool2dAttrs
 }
 
 table Tensor {
