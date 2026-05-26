@@ -1,5 +1,6 @@
 from fxfusion.passes.fusion_pass import FusionPass
 from fxfusion.passes.shape_prop import ShapePropPass
+from fxfusion.serializer import Serializer
 from fxfusion.passes.memory_plan import MemoryPlanningPass, print_alloc
 
 class Compiler:
@@ -18,5 +19,7 @@ class Compiler:
         
         if self.DEBUG:
             print_alloc(fx_model)
+        
+        Serializer(fx_model).run()
         
         return fx_model

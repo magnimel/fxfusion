@@ -6,6 +6,7 @@ cmake_install.cmake
 compile_commands.json
 py/gen/
 csrc/gen/
+data/*
 
 # IDE
 .vscode/
