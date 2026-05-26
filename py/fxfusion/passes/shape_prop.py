@@ -39,6 +39,14 @@ class ShapePropPass():
             elif node.op == 'call_function':
                 if node.target in (Fusion.fused_conv2d_relu, Fusion.fused_conv2d):
                     x, weight, bias, extra = _load_arg(node.args)
+                    
+                    node.meta["attrs"] = {
+                        "stride": extra["stride"],
+                        "padding": extra["padding"],
+                        "dilation": extra["dilation"],
+                        "groups": extra["groups"]
+                    }
+                    
                     result = F.conv2d(input=x, weight=weight, bias=bias,
                         stride=extra["stride"],
                         padding=extra["padding"],
