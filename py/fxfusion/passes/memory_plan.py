@@ -140,6 +140,7 @@ class MemoryPlanningPass:
                     
         for exec_id, node in enumerate(nodes):
             kind = self._node_kind(node)
+            node.meta['kind'] = kind
             
             try:
                 size = self.memory_manager.tensor_size_bytes(node)
@@ -187,6 +188,7 @@ class MemoryPlanningPass:
                 raise RuntimeError(f"Unsupported node op: {node.op}")
 
             node.meta['alloc'] = alloc
+            node.meta['id'] = exec_id
             plan.spec_dict[node.name] = alloc
 
         # The final arena size is whatever the manager dictates
@@ -197,13 +199,14 @@ class MemoryPlanningPass:
     
 def print_alloc(fx_model: fx.GraphModule):
     print(f"ARENA SIZE: {fx_model.meta["arena_size"]}")
-    print(f"{'Node Name':<35} | {'Kind':<12} | {'Size (B)':<10} | {'Offset'}")
-    print("-" * 75)
+    print(f"{'Node Name':<35} | {'Kind':<12} | {'Size (B)':<10} | {'Offset':<10} | {'Alias Of'}")
+    print("-" * 85)
 
     for node in fx_model.graph.nodes:
         if 'alloc' in node.meta:
             alloc = node.meta['alloc']
             offset_val = str(alloc.mem_offset) if alloc.mem_offset is not None else "N/A"
-            print(f"{node.name:<35} | {alloc.kind:<12} | {alloc.size_bytes:<10} | {offset_val}")
+            alias_of = str(alloc.alias_of) if alloc.alias_of is not None else "N/A"
+            print(f"{node.name:<35} | {alloc.kind:<12} | {alloc.size_bytes:<10} | {offset_val:<10} | {alias_of}")
         else:
             print(f"{node.name:<35} | {'Missing Alloc Info'}")
