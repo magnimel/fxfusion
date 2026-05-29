@@ -1,8 +1,7 @@
-from fxfusion.compiler import Compiler
+from fxfusion.engine import Engine
 import torch.fx as fx
 import torch.nn as nn
 import torch
-
 
 class TinyMLP(nn.Module):
     def __init__(self):
@@ -25,8 +24,18 @@ class TinyMLP(nn.Module):
 def main():
     
     model = TinyMLP()
-    input = torch.randn(1, 50)
-    fx_model: fx.GraphModule = Compiler().run(model, input)
+    dummy_input = torch.randn(1, 50)
+    
+    engine = Engine(
+        model,
+        [dummy_input],
+        model_name="tiny_mlp",
+        device="cpu",
+        DEBUG=False
+    )
+
+    outputs = engine.run([dummy_input])
+    print(outputs)
     
 if __name__ == "__main__":
     main()
