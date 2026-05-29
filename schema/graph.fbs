@@ -91,6 +91,7 @@ table Node {
 }
 
 table Graph {
+  name:string;
   arena_size:ulong;
   tensors:[Tensor];
   nodes:[Node]; 

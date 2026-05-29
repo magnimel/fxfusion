@@ -26,14 +26,15 @@ import gen.fxfusion.AdaptivePool2dAttrs as AdaptivePool2dAttrs
 
 
 class Serializer:
-    def __init__(self, fx_model: fx.GraphModule) -> None:
+    def __init__(self, fx_model: fx.GraphModule, model_name: str = "model") -> None:
         self.fx_model = fx_model
+        self.model_name = model_name
         self.graph = self.fx_model.graph
         self.modules = dict(self.fx_model.named_modules())
         self.builder = fbs.Builder(1024)
-
         root_dir = Path(__file__).resolve().parents[2]
-        self._bin_path = root_dir / "data" / "graph.bin"
+        
+        self._bin_path = root_dir / "data" / f"{model_name}.bin"
 
     def run(self) -> Path:
         self._validate_metadata()
@@ -56,7 +57,10 @@ class Serializer:
             self.builder.PrependUOffsetTRelative(offset)
         nodes_vec = self.builder.EndVector()
 
+        name_offset = self.builder.CreateString(self.fx_model.meta.get("name", self.model_name))
+        
         Graph.Start(self.builder)
+        Graph.AddName(self.builder, name_offset)
         Graph.AddArenaSize(self.builder, self.fx_model.meta["arena_size"])
         Graph.AddTensors(self.builder, tensors_vec)
         Graph.AddNodes(self.builder, nodes_vec)
