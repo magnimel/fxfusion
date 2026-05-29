@@ -1,4 +1,4 @@
-.PHONY: compile rebuild clean run
+.PHONY: compile rebuild clean gen run
 
 # CC := /opt/homebrew/bin/gcc-15
 # CXX := /opt/homebrew/bin/g++-15
@@ -6,10 +6,8 @@
 CC := /usr/bin/clang 
 CXX := /usr/bin/clang++
 
-# -DCMAKE_PREFIX_PATH=`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'` 
-
 BUILD_TYPE ?= Release
-BUILD_DIR := src/build
+BUILD_DIR := csrc/build
 
 $(BUILD_DIR)/.configured: CMakeLists.txt
 	@CC=$(CC) CXX=$(CXX) cmake \
@@ -28,8 +26,10 @@ run:
 	./$(BUILD_DIR)/engine
 
 gen: 
+	rm -rf csrc/gen
+	rm -rf py/gen
 	./scripts/codegen.bash
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) 
 
