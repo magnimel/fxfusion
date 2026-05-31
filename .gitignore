@@ -20,7 +20,7 @@ data/*
 .DS_Store
 
 # Local
-notes.txt
+playground
 
 # Binaries
 *.o
