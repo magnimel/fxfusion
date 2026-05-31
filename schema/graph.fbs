@@ -68,7 +68,7 @@ union OpAttributes {
 }
 
 table Tensor {
-  id:uint;
+  id:int;
   name:string;
   kind:TensorKind;
   offset:long = -1;
