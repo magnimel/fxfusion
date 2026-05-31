@@ -1,4 +1,5 @@
 #include "runtime/memory_manager.hpp"
+#include "runtime/op_registry.hpp"
 
 namespace fxfusion {
 
@@ -18,7 +19,7 @@ inline std::vector<int64_t> get_shape(const fxfusion::Tensor* tensor) {
     return shape;
 }
 
-MemoryManager::MemoryManager(const fxfusion::Graph* graph, torch::Device device) : graph_(graph) {
+MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& device) : graph_(graph) {
     TORCH_CHECK(graph_ != nullptr, "Execution graph is not loaded");
 
     if (graph_->arena_size() > 0) {
@@ -60,8 +61,11 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, torch::Device device)
             input_ids_.push_back(id);
 
         } else if (kind == fxfusion::TensorKind_Alias) {
+            int alias_of = tensor->alias_of();
+            TORCH_CHECK(alias_of >= 0, "Alias tensor missing valid alias_of");
+
             aliases_.push_back(AliasInstruction{ id,
-                tensor->alias_of(), get_shape(tensor)
+                alias_of, get_shape(tensor)
             });
         }
     }
