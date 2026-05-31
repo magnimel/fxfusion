@@ -15,7 +15,7 @@ enum DType : byte {
   Int64 = 3
 }
 
-enum OpCode : short {
+enum OpCode : byte {
   Placeholder = 0,
   Conv2d = 1,
   Conv2dRelu = 2,
@@ -68,7 +68,7 @@ union OpAttributes {
 }
 
 table Tensor {
-  id:int;
+  id:uint;
   name:string;
   kind:TensorKind;
   offset:long = -1;
