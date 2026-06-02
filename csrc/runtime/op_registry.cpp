@@ -2,13 +2,16 @@
 #include <torch/torch.h>
 #include <Python.h>
 #include <iterator>
-#include "runtime/op_registry.hpp"
-#include "kernels/cuda/kernels.hpp"
-#include "kernels/cpu/kernels.hpp"
+#include "op_registry.hpp"
+#ifdef USE_CUDA
+#include "kernels.cuh"
+#endif
+#include "kernels.hpp"
 
 namespace fxfusion {
 
 static KernelSet select_kernels(const torch::Device& device) {
+#ifdef USE_CUDA
     if (device.is_cuda()) {
         return {
             kernels::cuda::conv2d,
@@ -24,6 +27,10 @@ static KernelSet select_kernels(const torch::Device& device) {
             kernels::cuda::adaptive_avg_pool2d,
         };
     }
+#else 
+    TORCH_CHECK(!device.is_cuda(), "FXFusion was built without CUDA support");
+#endif
+
     return {
         kernels::cpu::conv2d,
         kernels::cpu::conv2d_relu,
