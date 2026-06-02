@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <torch/extension.h>
-#include "runtime/execution_engine.hpp"
+#include "execution_engine.hpp"
 
 PYBIND11_MODULE(fxfusion_extension, m) {}
 
