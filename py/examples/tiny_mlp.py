@@ -1,42 +1,51 @@
 from fxfusion.engine import Engine
-import torch.fx as fx
-import torch.nn as nn
+from utils import benchmark, check_correctness
+import time
 import torch
+import torch.nn as nn
+
 
 class TinyMLP(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(50, 100),
+            nn.Linear(4096, 4096),
             nn.ReLU(),
-            nn.Linear(100, 150),
+            nn.Linear(4096, 4096),
             nn.ReLU(),
-            nn.Linear(150, 100),
+            nn.Linear(4096, 4096),
             nn.ReLU(),
-            nn.Linear(100, 50),
-            nn.ReLU()
         )
 
     def forward(self, x):
         return self.layers(x)
-    
-    
+
 def main():
-    
-    model = TinyMLP()
-    dummy_input = torch.randn(1, 50)
-    
+    torch.set_grad_enabled(False)
+
+    model = TinyMLP().eval()
+    x = torch.randn(64, 4096)
+
     engine = Engine(
         model,
-        [dummy_input],
+        [x],
         model_name="tiny_mlp",
         device="cpu",
-        DEBUG=False
+        DEBUG=True,
     )
 
-    outputs = engine.run([dummy_input])
-    print(outputs)
-    
+    check_correctness(engine, model, x)
+
+    compiled = torch.compile(model)
+
+    pytorch_ms = benchmark("PyTorch", lambda: model(x))
+    fxfusion_ms = benchmark("FXFusion", lambda: engine.run([x]))
+    compile_ms = benchmark("torch.compile", lambda: compiled(x))
+
+    print(f"\nSpeedup")
+    print(f"FXFusion vs Pytorch: {pytorch_ms / fxfusion_ms:.2f}x")
+    print(f"FXFusion vs compile: {compile_ms / fxfusion_ms:.2f}x")
+
+
 if __name__ == "__main__":
     main()
-    
