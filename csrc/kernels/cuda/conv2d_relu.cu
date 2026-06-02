@@ -1,7 +1,7 @@
 #include <vector>
 #include <torch/torch.h>
 #include "graph_generated.h"
-#include "kernels/cuda/kernels.hpp"
+#include "kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
 
