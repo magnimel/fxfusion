@@ -4,8 +4,8 @@
 #include <torch/extension.h>
 #include <fstream>
 #include <iostream>
-#include "runtime/execution_engine.hpp"
-#include "runtime/op_registry.hpp"
+#include "execution_engine.hpp"
+#include "op_registry.hpp"
 
 namespace fxfusion {
 
@@ -33,7 +33,7 @@ std::vector<torch::Tensor> ExecutionEngine::run(const std::vector<torch::Tensor>
     TORCH_CHECK(graph_ != nullptr, "Execution graph is not loaded");
     TORCH_CHECK(inputs[0].device() == device_, "Device mismatched between input and Engine");
     
-    memory_manager_->bind_inputs(inputs);
+    memory_manager_->bind_inputs_and_aliases(inputs);
     const auto& registry = memory_manager_->get_registry();
     
     for (const auto* node : *graph_->nodes()) {
@@ -43,7 +43,6 @@ std::vector<torch::Tensor> ExecutionEngine::run(const std::vector<torch::Tensor>
         }
 
         if (op_code == fxfusion::OpCode_View) {
-            
             continue;
         }
 

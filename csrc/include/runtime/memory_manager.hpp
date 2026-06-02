@@ -14,7 +14,7 @@ struct AliasInstruction {
 class MemoryManager {
 public:
     MemoryManager(const fxfusion::Graph* graph, const torch::Device& device);
-    void bind_inputs(const std::vector<torch::Tensor>& inputs);
+    void bind_inputs_and_aliases(const std::vector<torch::Tensor>& inputs);
     const std::vector<torch::Tensor>& get_registry() const { return registry_; }
 
 private:

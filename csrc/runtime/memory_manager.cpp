@@ -1,5 +1,5 @@
-#include "runtime/memory_manager.hpp"
-#include "runtime/op_registry.hpp"
+#include "memory_manager.hpp"
+#include "op_registry.hpp"
 
 namespace fxfusion {
 
@@ -71,7 +71,7 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
     }
 }
 
-void MemoryManager::bind_inputs(const std::vector<torch::Tensor>& inputs) {
+void MemoryManager::bind_inputs_and_aliases(const std::vector<torch::Tensor>& inputs) {
     TORCH_CHECK(inputs.size() == input_ids_.size(), "Input count mismatch");
 
     for (size_t i = 0; i < inputs.size(); ++i) {
