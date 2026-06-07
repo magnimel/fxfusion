@@ -28,7 +28,14 @@ ExecutionEngine::ExecutionEngine(const std::string& graph_path, const std::strin
 
 }
 
-std::vector<torch::Tensor> ExecutionEngine::run(const std::vector<torch::Tensor>& inputs) {
+const std::vector<torch::Tensor>& ExecutionEngine::run(const std::vector<torch::Tensor>& inputs) {
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        TORCH_CHECK(
+            inputs[i].device() == device_, 
+            "input engine device mismatch, index: ", i
+        );
+    }
+
     memory_manager_->bind_inputs_and_aliases(inputs);
     auto& registry = memory_manager_->get_registry();  
     runtime_graph_->execute(registry);

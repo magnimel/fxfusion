@@ -16,7 +16,7 @@ namespace fxfusion {
 class ExecutionEngine : public torch::CustomClassHolder {
 public:
     explicit ExecutionEngine(const std::string& graph_path, const std::string& device = "cpu");
-    std::vector<torch::Tensor> run(const std::vector<torch::Tensor>& inputs);
+    const std::vector<torch::Tensor>& run(const std::vector<torch::Tensor>& inputs);
 
 private:
     std::vector<char> buffer_;

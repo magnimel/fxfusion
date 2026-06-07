@@ -73,6 +73,10 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
             });
         }
     }
+    outputs_.reserve(output_ids_.size());
+    for (auto id : output_ids_) {
+        outputs_.push_back(registry_[id]);
+    }
 }
 
 void MemoryManager::bind_inputs_and_aliases(const std::vector<torch::Tensor>& inputs) {
@@ -87,13 +91,8 @@ void MemoryManager::bind_inputs_and_aliases(const std::vector<torch::Tensor>& in
     }
 }
 
-std::vector<torch::Tensor> MemoryManager::get_outputs() const {
-    std::vector<torch::Tensor> out;
-    out.reserve(output_ids_.size());
-    for (auto id : output_ids_) out.push_back(registry_[id]);
-    return out;
+const std::vector<torch::Tensor>& MemoryManager::get_outputs() const {
+    return outputs_;
 }
-
-
 
 }
