@@ -12,7 +12,7 @@ class Engine:
         example_inputs: List[torch.Tensor], 
         model_name: Optional[str] = None,
         device: str = "cpu",
-        DEBUG: bool = True,
+        DEBUG: bool = False,
     ):
         self.compiler = Compiler(DEBUG=DEBUG)
 

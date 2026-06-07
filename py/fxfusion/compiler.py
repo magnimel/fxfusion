@@ -6,7 +6,7 @@ from fxfusion.serializer import Serializer
 from fxfusion.passes.memory_plan import MemoryPlanningPass, print_alloc
 
 class Compiler:
-    def __init__(self, DEBUG: bool = True):
+    def __init__(self, DEBUG: bool = False):
         self.DEBUG = DEBUG
 
     def run(self, model, *example_inputs, model_name: str | None = None)  -> Tuple[fx.GraphModule, str]:
