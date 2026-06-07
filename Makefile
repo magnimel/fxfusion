@@ -27,7 +27,7 @@ run:
 	./$(BUILD_DIR)/engine
 
 test:
-	@pytest py/tests -v
+	@pytest -v
 	
 gen: 
 	@rm -rf csrc/gen
