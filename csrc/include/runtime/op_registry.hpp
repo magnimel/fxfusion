@@ -1,43 +1,35 @@
 #pragma once
-
 #include <functional>
 #include <vector>
-
 #include <torch/torch.h>
-
+#include "tensor_registry.hpp"
 #include "graph_generated.h"
 
 namespace fxfusion {
 
-using OpFn = std::function<void(
-    const std::vector<torch::Tensor>& registry,
-    const fxfusion::Node* node
-)>;
-
 struct KernelSet {
-    OpFn conv2d;
-    OpFn conv2d_relu;
-    OpFn linear;
-    OpFn linear_relu;
-    OpFn add;
-    OpFn add_relu;
-    OpFn relu;
-    OpFn max_pool2d;
-    OpFn avg_pool2d;
-    OpFn view;
-    OpFn adaptive_avg_pool2d;
+    KernelFn conv2d;
+    KernelFn conv2d_relu;
+    KernelFn linear;
+    KernelFn linear_relu;
+    KernelFn add;
+    KernelFn add_relu;
+    KernelFn relu;
+    KernelFn max_pool2d;
+    KernelFn avg_pool2d;
+    KernelFn view;
+    KernelFn adaptive_avg_pool2d;
 };
 
 class OpRegistry {
 public:
     explicit OpRegistry(const torch::Device& device);
-
-    void register_op(fxfusion::OpCode op_code, OpFn fn);
-
-    const OpFn& get(fxfusion::OpCode op_code) const;
+    void register_op(fxfusion::OpCode op_code, KernelFn fn);
+    KernelFn get(fxfusion::OpCode op_code) const;
+    
 
 private:
-    std::vector<OpFn> registry_;
+    std::vector<KernelFn> registry_;
 };
 
 } 

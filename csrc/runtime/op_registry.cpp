@@ -64,13 +64,13 @@ static KernelSet select_kernels(const torch::Device& device) {
         register_op(OpCode_AdaptiveAvgPool2d, k.adaptive_avg_pool2d);
     }
 
-    void OpRegistry::register_op(fxfusion::OpCode op_code, OpFn fn) {
+    void OpRegistry::register_op(fxfusion::OpCode op_code, KernelFn fn) {
         const auto index = static_cast<size_t>(op_code);
         TORCH_CHECK(index < registry_.size(), "Unsupported OpCode: ", index);
         registry_[index] = std::move(fn);
     }
 
-    const OpFn& OpRegistry::get(fxfusion::OpCode op_code) const {
+    KernelFn OpRegistry::get(fxfusion::OpCode op_code) const {
         const auto index = static_cast<size_t>(op_code);
         TORCH_CHECK(index < registry_.size(), "Unsupported OpCode: ", index);
         TORCH_CHECK(registry_[index] != nullptr, "Unregistered OpCode: ", index);
