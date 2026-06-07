@@ -1,0 +1,4 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"Compute-bound MLP (depth=4, width=4096, batch=64)",cpu,PyTorch,25.8782,1.04
+"Compute-bound MLP (depth=4, width=4096, batch=64)",cpu,torch.compile,23.9666,0.97
+"Compute-bound MLP (depth=4, width=4096, batch=64)",cpu,FXFusion,24.8345,1.00

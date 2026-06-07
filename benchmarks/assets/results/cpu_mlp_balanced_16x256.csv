@@ -1,0 +1,4 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"Balanced MLP (depth=16, width=256, batch=4)",cpu,PyTorch,0.2307,1.17
+"Balanced MLP (depth=16, width=256, batch=4)",cpu,torch.compile,0.2409,1.22
+"Balanced MLP (depth=16, width=256, batch=4)",cpu,FXFusion,0.1976,1.00

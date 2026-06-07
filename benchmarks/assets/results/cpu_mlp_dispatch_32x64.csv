@@ -1,0 +1,4 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"Dispatch-heavy MLP (depth=32, width=64, batch=1)",cpu,PyTorch,0.1879,2.16
+"Dispatch-heavy MLP (depth=32, width=64, batch=1)",cpu,torch.compile,0.1373,1.58
+"Dispatch-heavy MLP (depth=32, width=64, batch=1)",cpu,FXFusion,0.0869,1.00

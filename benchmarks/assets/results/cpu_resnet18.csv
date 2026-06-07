@@ -1,0 +1,4 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+ResNet18 (1 x 3 x 224 x 224),cpu,PyTorch,13.5098,1.06
+ResNet18 (1 x 3 x 224 x 224),cpu,torch.compile,12.9507,1.02
+ResNet18 (1 x 3 x 224 x 224),cpu,FXFusion,12.7116,1.00
