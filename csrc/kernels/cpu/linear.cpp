@@ -1,15 +1,12 @@
-#include <vector>
-#include <torch/torch.h>
-#include "graph_generated.h"
 #include "kernels.hpp"
 
 namespace fxfusion::kernels::cpu {
 
-void linear (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node) {
-    const auto& x = registry[node->inputs()->Get(0)];
-    const auto& w = registry[node->inputs()->Get(1)];
-    const auto& b = registry[node->inputs()->Get(2)];
-    const auto& out = registry[node->outputs()->Get(0)];
+void linear(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params&) {
+    const auto& x = reg[input_ids[0]];
+    const auto& w = reg[input_ids[1]];
+    const auto& b = reg[input_ids[2]];
+    auto& out      = reg[output_ids[0]];
     out.copy_(torch::linear(x, w, b));
 }
 

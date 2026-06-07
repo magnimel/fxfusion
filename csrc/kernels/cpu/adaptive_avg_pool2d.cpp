@@ -1,12 +1,14 @@
-#include <vector>
-#include <torch/torch.h>
-#include "graph_generated.h"
 #include "kernels.hpp"
 
 namespace fxfusion::kernels::cpu {
 
-void adaptive_avg_pool2d (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node) {
-    TORCH_CHECK(false, "adaptive_avg_pool2d: not implemented yet");
+void adaptive_avg_pool2d(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params) {
+    const auto& x = reg[input_ids[0]];
+    auto& out      = reg[output_ids[0]];
+
+    const std::vector<int64_t> output_size = {params[0], params[1]};
+
+    out.copy_(torch::adaptive_avg_pool2d(x, output_size));
 }
 
 } 
