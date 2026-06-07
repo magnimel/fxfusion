@@ -7,7 +7,9 @@
 #include <torch/extension.h>
 #include "memory_manager.hpp"
 #include "op_registry.hpp"
+#include "runtime_graph.hpp"
 #include "graph_generated.h"
+
 
 namespace fxfusion {
 
@@ -18,10 +20,9 @@ public:
 
 private:
     std::vector<char> buffer_;
-    const fxfusion::Graph* graph_ = nullptr;
     const torch::Device device_;
     std::unique_ptr<MemoryManager> memory_manager_;
-    std::unique_ptr<OpRegistry> op_registry_;
+    std::unique_ptr<RuntimeGraph> runtime_graph_;
 };
 
 }

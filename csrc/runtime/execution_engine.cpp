@@ -22,42 +22,17 @@ ExecutionEngine::ExecutionEngine(const std::string& graph_path, const std::strin
     buffer_.resize(size);
     file.read(buffer_.data(), static_cast<std::streamsize>(size));
 
-    graph_ = fxfusion::GetGraph(buffer_.data());
-    memory_manager_ = std::make_unique<MemoryManager>(graph_, device_);
-    op_registry_ = std::make_unique<OpRegistry>(device_);
+    const auto* graph = fxfusion::GetGraph(buffer_.data());
+    memory_manager_ = std::make_unique<MemoryManager>(graph, device_);
+    runtime_graph_ = std::make_unique<RuntimeGraph>(graph, device_);
 
 }
 
 std::vector<torch::Tensor> ExecutionEngine::run(const std::vector<torch::Tensor>& inputs) {
-    TORCH_CHECK(inputs.size() > 0, "Inputs vector is empty");
-    TORCH_CHECK(graph_ != nullptr, "Execution graph is not loaded");
-    TORCH_CHECK(inputs[0].device() == device_, "Device mismatched between input and Engine");
-    
     memory_manager_->bind_inputs_and_aliases(inputs);
-    const auto& registry = memory_manager_->get_registry();
-    
-    for (const auto* node : *graph_->nodes()) {
-        const auto op_code = node->opcode();
-        if (op_code == fxfusion::OpCode_Placeholder) {
-            continue;
-        }
-
-        if (op_code == fxfusion::OpCode_View) {
-            continue;
-        }
-
-        const auto& kernel = op_registry_->get(node->opcode());
-        kernel(registry, node);
-    }
-    
-    std::vector<torch::Tensor> outputs;
-    for (const auto* _tensor : *graph_->tensors()) {
-        if (_tensor->kind() == fxfusion::TensorKind_Output) {
-            outputs.push_back(registry[_tensor->id()]);
-        }
-    }
-
-    return outputs;
+    auto& registry = memory_manager_->get_registry();  
+    runtime_graph_->execute(registry);
+    return memory_manager_->get_outputs();
 }
 
 }
