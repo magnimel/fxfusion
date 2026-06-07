@@ -30,6 +30,10 @@ class FusionPass:
             1: self._build_linear_relu_spec,
             2: self._build_conv_bn_spec,
             3: self._build_add_relu_spec,
+            4: self._build_add_relu_spec,     
+            5: self._build_conv_relu_spec,    
+            6: self._build_conv_spec,         
+            7: self._build_linear_spec,       
         }
 
     def run(self, model: nn.Module) -> fx.GraphModule:
@@ -196,6 +200,63 @@ class FusionPass:
             nodes_to_erase=[relu_node, add_node],
         )
 
+
+    def _build_conv_relu_spec(self, chain: List[fx.Node]) -> FusionSpec:
+        conv_node, relu_node = chain
+        conv_mod = cast(nn.Conv2d, self.modules[str(conv_node.target)])
+
+        weight = conv_mod.weight.detach()
+        bias = conv_mod.bias.detach() if conv_mod.bias is not None else torch.zeros(
+            conv_mod.out_channels, device=weight.device, dtype=weight.dtype
+        )
+
+        return FusionSpec(
+            tail_node=relu_node,
+            primary_node=conv_node,
+            input_args=(conv_node.args[0],),
+            weight=weight,
+            bias=bias,
+            nodes_to_erase=[relu_node, conv_node],
+            extra=self._conv_extra(conv_mod),
+        )
+
+    def _build_conv_spec(self, chain: List[fx.Node]) -> FusionSpec:
+        conv_node, = chain
+        conv_mod = cast(nn.Conv2d, self.modules[str(conv_node.target)])
+
+        weight = conv_mod.weight.detach()
+        bias = conv_mod.bias.detach() if conv_mod.bias is not None else torch.zeros(
+            conv_mod.out_channels, device=weight.device, dtype=weight.dtype
+        )
+
+        return FusionSpec(
+            tail_node=conv_node,
+            primary_node=conv_node,
+            input_args=(conv_node.args[0],),
+            weight=weight,
+            bias=bias,
+            nodes_to_erase=[conv_node],
+            extra=self._conv_extra(conv_mod),
+        )
+    
+    def _build_linear_spec(self, chain: List[fx.Node]) -> FusionSpec:
+        linear_node, = chain
+        linear_mod = cast(nn.Linear, self.modules[str(linear_node.target)])
+
+        weight = linear_mod.weight.detach()
+        bias = linear_mod.bias.detach() if linear_mod.bias is not None else torch.zeros(
+            linear_mod.out_features, device=weight.device, dtype=weight.dtype
+        )
+
+        return FusionSpec(
+            tail_node=linear_node,
+            primary_node=linear_node,
+            input_args=(linear_node.args[0],),
+            weight=weight,
+            bias=bias,
+            nodes_to_erase=[linear_node],
+        )
+    
     def _commit_fusion(self, fusion_op: FusionOp, spec: FusionSpec) -> fx.Node:
         assert self.fx_model is not None
         assert self.graph is not None

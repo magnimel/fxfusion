@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.fx as fx
 from math import prod
 from dataclasses import dataclass, field
@@ -116,14 +117,30 @@ class MemoryPlanningPass:
         
         if node.op == "call_function" and node.target in (torch.flatten, torch.reshape):
             return "alias"
+        
+        if node.op == "call_module":
+            mod = dict(self.fx_model.named_modules())[node.target]
+            if isinstance(mod, nn.ReLU):
+                x = node.args[0]
+                if isinstance(x, fx.Node):
+                    if x.op == "placeholder":
+                        return "activation"
+                    if len(x.users) == 1:
+                        return "alias"
+                return "activation"  
+             
         if node.op == "placeholder":
             return "input"
+        
         if node.op == "get_attr":
             return "const"
+        
         if node.op in ("call_function", "call_method", "call_module"):
             return "activation"
+        
         if node.op == "output":
             return "output"
+        
         raise RuntimeError(f"Unsupported node op: {node.op}")
         
     def _compute_last_use(self, nodes: List[fx.Node]) -> Dict[fx.Node, int]:

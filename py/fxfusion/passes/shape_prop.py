@@ -53,7 +53,7 @@ class ShapePropPass():
                         dilation=extra["dilation"],
                         groups=extra["groups"]
                     )
-                elif node.target == Fusion.fused_linear_relu:
+                elif node.target in (Fusion.fused_linear_relu, Fusion.fused_linear):
                     x, weight, bias = _load_arg(node.args)
                     result = F.linear(input=x, weight=weight, bias=bias)
                 elif node.target == Fusion.fused_add_relu:
