@@ -29,6 +29,7 @@ endif()
 
 file(GLOB CPU_KERNEL_SOURCES csrc/kernels/cpu/*.cpp)
 file(GLOB CUDA_KERNEL_SOURCES csrc/kernels/cuda/*.cu)
+file(GLOB RUNTIME_SOURCES csrc/runtime/*.cpp)
 
 if(CUDAToolkit_FOUND)
     set_source_files_properties(${CUDA_KERNEL_SOURCES} PROPERTIES LANGUAGE CUDA)
@@ -37,10 +38,8 @@ else()
 endif()
 
 add_library(fxfusion_extension MODULE
-    csrc/runtime/execution_engine.cpp
-    csrc/runtime/memory_manager.cpp
-    csrc/runtime/op_registry.cpp
     csrc/bindings/python_bindings.cpp
+    ${RUNTIME_SOURCES}
     ${CPU_KERNEL_SOURCES}
     ${CUDA_KERNEL_SOURCES}
 )
@@ -65,18 +64,6 @@ target_link_libraries(fxfusion_extension PRIVATE
     Python3::Module
     flatbuffers::flatbuffers
 )
-
-if(APPLE)
-    find_library(ACCELERATE_FRAMEWORK Accelerate REQUIRED)
-    target_link_libraries(fxfusion_extension PRIVATE ${ACCELERATE_FRAMEWORK})
-    target_compile_definitions(fxfusion_extension PRIVATE
-        ACCELERATE_NEW_LAPACK
-        ACCELERATE_LAPACK_ILP64
-    )
-else()
-    find_package(BLAS REQUIRED)
-    target_link_libraries(fxfusion_extension PRIVATE ${BLAS_LIBRARIES})
-endif()
 
 if(CUDAToolkit_FOUND)
     target_link_libraries(fxfusion_extension PRIVATE
