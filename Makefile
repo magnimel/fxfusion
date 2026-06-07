@@ -8,6 +8,7 @@ CXX := /usr/bin/clang++
 
 BUILD_TYPE ?= Release
 BUILD_DIR := csrc/build
+DATA_DIR := data
 
 $(BUILD_DIR)/.configured: CMakeLists.txt
 	@CC=$(CC) CXX=$(CXX) cmake \
@@ -26,10 +27,12 @@ run:
 	./$(BUILD_DIR)/engine
 
 gen: 
-	rm -rf csrc/gen
-	rm -rf py/gen
-	./scripts/codegen.bash
+	@rm -rf csrc/gen
+	@rm -rf py/gen
+	@./scripts/codegen.bash
+	@echo "⚠️  Run 'make rebuild' to recompile with new schema"
 
 clean:
 	rm -rf $(BUILD_DIR) 
+	rm -f $(DATA_DIR)/*.bin
 
