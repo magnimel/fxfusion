@@ -26,6 +26,9 @@ rebuild: clean compile
 run:
 	./$(BUILD_DIR)/engine
 
+test:
+	@pytest py/tests -v
+	
 gen: 
 	@rm -rf csrc/gen
 	@rm -rf py/gen
