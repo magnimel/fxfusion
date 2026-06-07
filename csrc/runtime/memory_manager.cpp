@@ -19,19 +19,19 @@ inline std::vector<int64_t> get_shape(const fxfusion::Tensor* tensor) {
     return shape;
 }
 
-MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& device) : graph_(graph) {
-    TORCH_CHECK(graph_ != nullptr, "Execution graph is not loaded");
+MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& device) {
+    TORCH_CHECK(graph != nullptr, "Execution graph is not loaded");
 
-    if (graph_->arena_size() > 0) {
+    if (graph->arena_size() > 0) {
         arena_ = torch::empty(
-            {static_cast<int64_t>(graph_->arena_size())},
+            {static_cast<int64_t>(graph->arena_size())},
             torch::TensorOptions().device(device).dtype(torch::kUInt8)
         );
     }
 
-    registry_.resize(graph_->tensors()->size());
+    registry_.resize(graph->tensors()->size());
 
-    for(const auto* tensor : *graph_->tensors()) {
+    for(const auto* tensor : *graph->tensors()) {
         auto id = tensor->id();
         auto kind = tensor->kind();
         auto dtype = get_dtype(tensor);
@@ -56,6 +56,10 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
                 raw_ptr + offset, shape, 
                 torch::TensorOptions().device(device).dtype(dtype)
             );
+
+            if (kind == fxfusion::TensorKind_Output) {
+                output_ids_.push_back(id);
+            }
 
         } else if (kind == fxfusion::TensorKind_Input) {
             input_ids_.push_back(id);
@@ -82,5 +86,14 @@ void MemoryManager::bind_inputs_and_aliases(const std::vector<torch::Tensor>& in
         registry_[alias.id] = registry_[alias.source_id].view(alias.shape);
     }
 }
+
+std::vector<torch::Tensor> MemoryManager::get_outputs() const {
+    std::vector<torch::Tensor> out;
+    out.reserve(output_ids_.size());
+    for (auto id : output_ids_) out.push_back(registry_[id]);
+    return out;
+}
+
+
 
 }

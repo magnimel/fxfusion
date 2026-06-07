@@ -2,6 +2,7 @@
 #include <vector>
 #include <torch/torch.h>
 #include "graph_generated.h"
+#include "tensor_registry.hpp"
 
 namespace fxfusion {
 
@@ -15,14 +16,14 @@ class MemoryManager {
 public:
     MemoryManager(const fxfusion::Graph* graph, const torch::Device& device);
     void bind_inputs_and_aliases(const std::vector<torch::Tensor>& inputs);
-    const std::vector<torch::Tensor>& get_registry() const { return registry_; }
+    TensorRegistry& get_registry() { return registry_; }
+    std::vector<torch::Tensor> get_outputs() const;
 
 private:
-    const fxfusion::Graph* graph_ = nullptr; 
     torch::Tensor arena_;
-    std::vector<torch::Tensor> registry_;
-    
-    std::vector<int32_t> input_ids_; 
+    TensorRegistry registry_;
+    TensorIds input_ids_; 
+    TensorIds output_ids_; 
     std::vector<AliasInstruction> aliases_;
 };
 
