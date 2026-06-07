@@ -1,35 +1,19 @@
+from torchvision.models import resnet50
 from fxfusion.engine import Engine
 from tests.utils import benchmark
 import torch
-import torch.nn as nn
-
-
-class TinyMLP(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
-            nn.Linear(4096, 4096),
-            nn.ReLU(),
-        )
-
-    def forward(self, x):
-        return self.layers(x)
 
 
 def main():
     torch.set_grad_enabled(False)
 
-    model = TinyMLP().eval()
-    x = torch.randn(64, 4096)
+    model = resnet50(weights=None).eval()
+    x = torch.randn(1, 3, 224, 224)
 
-    engine = Engine(model, [x], model_name="tiny_mlp", device="cpu")
+    engine = Engine(model, [x], model_name="resnet50", device="cpu")
     compiled = torch.compile(model)
 
-    print("TinyMLP (64 x 4096, 3 layers)\n")
+    print("ResNet50 (1 x 3 x 224 x 224)\n")
     pytorch_ms  = benchmark("PyTorch",       lambda: model(x))
     compile_ms  = benchmark("torch.compile", lambda: compiled(x))
     fxfusion_ms = benchmark("FXFusion",      lambda: engine.run([x]))
