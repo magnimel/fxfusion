@@ -1,12 +1,9 @@
-#include <vector>
-#include <torch/torch.h>
-#include "graph_generated.h"
 #include "kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
 
-void view (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node) {
-    TORCH_CHECK(false, "view: not implemented yet");
+void view (TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params) {
+    TORCH_CHECK(false, "view: symbolic, should not be called");
 }
 
 } 
