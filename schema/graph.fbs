@@ -30,46 +30,8 @@ enum OpCode : byte {
   AdaptiveAvgPool2d = 11
 }
 
-struct Dim3 {
-  x:uint;
-  y:uint;
-  z:uint;
-}
-
-table KernelConfig {
-  grid:Dim3;
-  block:Dim3;
-  shared_memory_bytes:uint = 0;
-}
-
-table Conv2dAttrs {
-  stride:[int];
-  padding:[int];
-  dilation:[int];
-  groups:int = 1;
-}
-
-table Pool2dAttrs {
-  kernel_size:[int];
-  stride:[int];
-  padding:[int];
-  dilation:[int];
-  ceil_mode:bool = false;
-}
-
-table AdaptivePool2dAttrs {
-  output_size:[int];
-}
-
-union OpAttributes {
-  Conv2dAttrs,
-  Pool2dAttrs,
-  AdaptivePool2dAttrs
-}
-
 table Tensor {
   id:uint;
-  name:string;
   kind:TensorKind;
   offset:long = -1;
   size_bytes:ulong;
@@ -80,21 +42,17 @@ table Tensor {
 }
 
 table Node {
-  name:string;
-  opcode:OpCode;
-    
-  inputs:[uint];
-  outputs:[uint];
-
-  kernel_config:KernelConfig;
-  attrs:OpAttributes;
+  op_code:OpCode;
+  input_ids:[uint];
+  output_ids:[uint];
+  params:[int];
 }
 
 table Graph {
   name:string;
   arena_size:ulong;
   tensors:[Tensor];
-  nodes:[Node]; 
+  nodes:[Node];
 }
 
 root_type Graph;
