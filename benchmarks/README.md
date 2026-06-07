@@ -4,6 +4,14 @@ This document contains benchmark results comparing FXFusion against PyTorch eage
 
 ## Benchmark Configuration
 
+### Methodology
+
+- 100 warmup iterations before timing
+- 5000 measured iterations per benchmark
+- CPU timings collected using `time.perf_counter()`
+- Reported latency is the average latency per inference
+- All models executed in inference mode with gradient computation disabled
+
 ### CPU Backend
 
 - PyTorch: Eager execution
