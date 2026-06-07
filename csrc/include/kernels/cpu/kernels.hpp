@@ -1,20 +1,20 @@
 #pragma once
 #include <vector>
 #include <torch/torch.h>
-#include "graph_generated.h"
+#include "tensor_registry.hpp"
 
 namespace fxfusion::kernels::cpu {
 
-void conv2d      (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void conv2d_relu (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void linear      (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void linear_relu (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void add         (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void add_relu    (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void relu        (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void max_pool2d  (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void avg_pool2d  (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void view        (const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
-void adaptive_avg_pool2d(const std::vector<torch::Tensor>& registry, const fxfusion::Node* node);
+void conv2d              (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void conv2d_relu         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void linear              (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void linear_relu         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void add                 (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void add_relu            (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void relu                (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void max_pool2d          (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void avg_pool2d          (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void view                (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
+void adaptive_avg_pool2d (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&);
 
 }
