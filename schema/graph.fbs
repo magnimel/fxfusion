@@ -12,7 +12,8 @@ enum DType : byte {
   Float32 = 0,
   Float16 = 1,
   Int32 = 2,
-  Int64 = 3
+  Int64 = 3,
+  Bool = 4
 }
 
 enum OpCode : byte {
