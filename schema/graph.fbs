@@ -36,7 +36,7 @@ enum OpCode : byte {
   LayerNorm = 16,
   AddLayerNorm = 17,
   MHA = 18,
-  FeedForward = 19,
+  FeedForward = 19
 }
 
 table Tensor {
@@ -44,7 +44,7 @@ table Tensor {
   kind:TensorKind;
   offset:long = -1;
   size_bytes:ulong;
-  shape:[int];
+  shape:[long];
   dtype:DType;
   alias_of:int = -1;
   data:[ubyte];
@@ -54,7 +54,7 @@ table Node {
   op_code:OpCode;
   input_ids:[uint];
   output_ids:[uint];
-  int_params:[int];
+  int_params:[long];
   float_params:[float];
 }
 
