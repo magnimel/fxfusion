@@ -17,7 +17,7 @@ enum DType : byte {
 }
 
 enum OpCode : byte {
-  Placeholder = 0,
+  NoOp = 0,
   Conv2d = 1,
   Conv2dRelu = 2,
   Linear = 3,
@@ -25,10 +25,18 @@ enum OpCode : byte {
   Add = 5,
   AddRelu = 6,
   Relu = 7,
-  MaxPool2d = 8,
-  AvgPool2d = 9,
-  View = 10,
-  AdaptiveAvgPool2d = 11
+  Mul = 8,
+  MaxPool2d = 9,
+  AvgPool2d = 10,
+  AdaptiveAvgPool2d = 11,
+  Transpose = 12,
+  Size = 13,
+  Narrow = 14,
+  Embedding = 15,
+  LayerNorm = 16,
+  AddLayerNorm = 17,
+  MHA = 18,
+  FeedForward = 19,
 }
 
 table Tensor {
@@ -46,7 +54,8 @@ table Node {
   op_code:OpCode;
   input_ids:[uint];
   output_ids:[uint];
-  params:[int];
+  int_params:[int];
+  float_params:[float];
 }
 
 table Graph {
