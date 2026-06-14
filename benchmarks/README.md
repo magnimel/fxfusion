@@ -24,7 +24,7 @@ This document contains benchmark results comparing FXFusion against PyTorch eage
 
 ## Dispatch-Heavy MLP (depth=32, width=64, batch=1)
 
-![Dispatch 32x64](./assets/imgs/cpu_mlp_dispatch_32x64.png)
+![Dispatch 32x64](./assets/keep/cpu_mlp_dispatch_32x64.png)
 
 ### Result
 
@@ -35,7 +35,7 @@ This document contains benchmark results comparing FXFusion against PyTorch eage
 
 ## Dispatch-Heavy MLP (depth=32, width=128, batch=1)
 
-![Dispatch 32x128](./assets/imgs/cpu_mlp_dispatch_32x128.png)
+![Dispatch 32x128](./assets/keep/cpu_mlp_dispatch_32x128.png)
 
 ### Result
 
@@ -46,7 +46,7 @@ This document contains benchmark results comparing FXFusion against PyTorch eage
 
 ## Balanced MLP (depth=16, width=256, batch=4)
 
-![Balanced 16x256](./assets/imgs/cpu_mlp_balanced_16x256.png)
+![Balanced 16x256](./assets/keep/cpu_mlp_balanced_16x256.png)
 
 ### Result
 
@@ -56,7 +56,7 @@ FXFusion outperforms both PyTorch eager execution and torch.compile.
 
 ## Compute-Bound MLP (depth=4, width=4096, batch=64)
 
-![Compute 4x4096](./assets/imgs/cpu_mlp_compute_4x4096.png)
+![Compute 4x4096](./assets/keep/cpu_mlp_compute_4x4096.png)
 
 ### Result
 
@@ -66,7 +66,7 @@ Performance converges toward the underlying BLAS implementation used by LibTorch
 
 ## ResNet-18 (1 × 3 × 224 × 224)
 
-![ResNet18](./assets/imgs/cpu_resnet18.png)
+![ResNet18](./assets/keep/cpu_resnet18.png)
 
 ### Result
 
@@ -76,7 +76,7 @@ FXFusion slightly outperforms both PyTorch eager execution and torch.compile.
 
 ## ResNet-50 (1 × 3 × 224 × 224)
 
-![ResNet50](./assets/imgs/cpu_resnet50.png)
+![ResNet50](./assets/keep/cpu_resnet50.png)
 
 ### Result
 
@@ -132,20 +132,6 @@ FXFusion achieves near-parity with PyTorch eager execution on ResNet-18 and ResN
 
 # Raw Benchmark Files
 
-Generated charts:
+Generated charts and benchmark results:
 
-- `assets/imgs/cpu_mlp_dispatch_32x64.png`
-- `assets/imgs/cpu_mlp_dispatch_32x128.png`
-- `assets/imgs/cpu_mlp_balanced_16x256.png`
-- `assets/imgs/cpu_mlp_compute_4x4096.png`
-- `assets/imgs/cpu_resnet18.png`
-- `assets/imgs/cpu_resnet50.png`
-
-Raw benchmark results:
-
-- `assets/results/cpu_mlp_dispatch_32x64.csv`
-- `assets/results/cpu_mlp_dispatch_32x128.csv`
-- `assets/results/cpu_mlp_balanced_16x256.csv`
-- `assets/results/cpu_mlp_compute_4x4096.csv`
-- `assets/results/cpu_resnet18.csv`
-- `assets/results/cpu_resnet50.csv`
+- `assets/keep/`
