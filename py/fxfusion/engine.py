@@ -4,7 +4,6 @@ import fxfusion.lib.fxfusion_extension
 from typing import List, Optional
 from fxfusion.compiler import Compiler
 
-
 class Engine:
     def __init__(
         self, 
@@ -13,8 +12,12 @@ class Engine:
         model_name: Optional[str] = None,
         device: str = "cpu",
         DEBUG: bool = False,
+        memory_alignment: int = 64,
     ):
-        self.compiler = Compiler(DEBUG=DEBUG)
+        self.compiler = Compiler(
+            DEBUG=DEBUG,
+            memory_alignment=memory_alignment,
+        )
 
         self.fx_model, self.bin_path = self.compiler.run(
             model,
@@ -22,7 +25,6 @@ class Engine:
             model_name=model_name,
         )
 
-      
         self._engine = torch.classes.fxfusion_extension.ExecutionEngine(
             self.bin_path,
             device,
