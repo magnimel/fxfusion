@@ -41,12 +41,16 @@ def check_output_shape(model: nn.Module, x: torch.Tensor):
 # Shape correctness per op
 # -----------------------------------------------------------------------------
 
+
 def test_shape_conv2d():
     class M(nn.Module):
         def __init__(self):
             super().__init__()
             self.conv = nn.Conv2d(3, 64, 3, stride=2, padding=1)
-        def forward(self, x): return self.conv(x)
+
+        def forward(self, x):
+            return self.conv(x)
+
     check_output_shape(M().eval(), torch.randn(1, 3, 224, 224))
 
 
@@ -56,7 +60,10 @@ def test_shape_conv2d_relu():
             super().__init__()
             self.conv = nn.Conv2d(3, 64, 3, stride=2, padding=1)
             self.relu = nn.ReLU()
-        def forward(self, x): return self.relu(self.conv(x))
+
+        def forward(self, x):
+            return self.relu(self.conv(x))
+
     check_output_shape(M().eval(), torch.randn(1, 3, 224, 224))
 
 
@@ -65,7 +72,10 @@ def test_shape_linear():
         def __init__(self):
             super().__init__()
             self.fc = nn.Linear(512, 1000)
-        def forward(self, x): return self.fc(x)
+
+        def forward(self, x):
+            return self.fc(x)
+
     check_output_shape(M().eval(), torch.randn(4, 512))
 
 
@@ -73,9 +83,12 @@ def test_shape_linear_relu():
     class M(nn.Module):
         def __init__(self):
             super().__init__()
-            self.fc   = nn.Linear(512, 256)
+            self.fc = nn.Linear(512, 256)
             self.relu = nn.ReLU()
-        def forward(self, x): return self.relu(self.fc(x))
+
+        def forward(self, x):
+            return self.relu(self.fc(x))
+
     check_output_shape(M().eval(), torch.randn(4, 512))
 
 
@@ -84,7 +97,10 @@ def test_shape_max_pool2d():
         def __init__(self):
             super().__init__()
             self.pool = nn.MaxPool2d(3, stride=2, padding=1)
-        def forward(self, x): return self.pool(x)
+
+        def forward(self, x):
+            return self.pool(x)
+
     check_output_shape(M().eval(), torch.randn(1, 64, 112, 112))
 
 
@@ -93,7 +109,10 @@ def test_shape_avg_pool2d():
         def __init__(self):
             super().__init__()
             self.pool = nn.AvgPool2d(3, stride=2, padding=1)
-        def forward(self, x): return self.pool(x)
+
+        def forward(self, x):
+            return self.pool(x)
+
     check_output_shape(M().eval(), torch.randn(1, 64, 112, 112))
 
 
@@ -102,19 +121,26 @@ def test_shape_adaptive_avg_pool2d():
         def __init__(self):
             super().__init__()
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
-        def forward(self, x): return self.pool(x)
+
+        def forward(self, x):
+            return self.pool(x)
+
     check_output_shape(M().eval(), torch.randn(1, 512, 7, 7))
 
 
 def test_shape_add_relu():
     class M(nn.Module):
-        def forward(self, x): return torch.relu(x + x)
+        def forward(self, x):
+            return torch.relu(x + x)
+
     check_output_shape(M().eval(), torch.randn(1, 64, 56, 56))
 
 
 def test_shape_flatten():
     class M(nn.Module):
-        def forward(self, x): return torch.flatten(x, 1)
+        def forward(self, x):
+            return torch.flatten(x, 1)
+
     check_output_shape(M().eval(), torch.randn(1, 512, 7, 7))
 
 
@@ -124,8 +150,10 @@ def test_shape_residual_block():
             super().__init__()
             self.conv1 = nn.Conv2d(64, 64, 3, padding=1)
             self.conv2 = nn.Conv2d(64, 64, 3, padding=1)
+
         def forward(self, x):
             return torch.relu(self.conv2(torch.relu(self.conv1(x))) + x)
+
     check_output_shape(M().eval(), torch.randn(1, 64, 56, 56))
 
 
@@ -138,13 +166,15 @@ def test_shape_resnet18():
 # Meta fields
 # -----------------------------------------------------------------------------
 
+
 def test_all_nodes_have_shape():
     class M(nn.Module):
         def __init__(self):
             super().__init__()
             self.conv = nn.Conv2d(3, 64, 3, padding=1)
             self.pool = nn.AdaptiveAvgPool2d((1, 1))
-            self.fc   = nn.Linear(64, 10)
+            self.fc = nn.Linear(64, 10)
+
         def forward(self, x):
             x = self.conv(x)
             x = self.pool(x)
@@ -157,18 +187,21 @@ def test_all_nodes_have_shape():
         assert "shape" in node.meta, f"Missing shape on node: {node.name}"
         assert "dtype" in node.meta, f"Missing dtype on node: {node.name}"
 
+
 def test_dtype_is_float32():
     class M(nn.Module):
         def __init__(self):
             super().__init__()
             self.conv = nn.Conv2d(3, 64, 3, padding=1)
-        def forward(self, x): return self.conv(x)
+
+        def forward(self, x):
+            return self.conv(x)
 
     fused = propagate(M().eval(), torch.randn(1, 3, 32, 32))
     for node in fused.graph.nodes:
         if "dtype" in node.meta:
             assert node.meta["dtype"] == torch.float32, \
-                f"Expected float32 on {node.name}, got {node.meta['dtype']}"
+                   f"Expected float32 on {node.name}, got {node.meta['dtype']}"
 
 
 def test_shapes_consistent_with_memory_plan():
@@ -180,7 +213,9 @@ def test_shapes_consistent_with_memory_plan():
             super().__init__()
             self.conv1 = nn.Conv2d(3, 64, 3, padding=1)
             self.conv2 = nn.Conv2d(64, 64, 3, padding=1)
-        def forward(self, x): return self.conv2(self.conv1(x))
+
+        def forward(self, x):
+            return self.conv2(self.conv1(x))
 
     fused = propagate(M().eval(), torch.randn(1, 3, 32, 32))
     MemoryPlanningPass(fused).run()
@@ -201,6 +236,5 @@ def test_shapes_consistent_with_memory_plan():
             * torch.empty([], dtype=dtype).element_size()
         )
 
-        # allow for alignment padding
         assert alloc.size_bytes >= expected_bytes, \
-            f"{node.name}: size_bytes {alloc.size_bytes} < expected {expected_bytes}"
+               f"{node.name}: size_bytes {alloc.size_bytes} < expected {expected_bytes}"

@@ -7,10 +7,10 @@ from fxfusion.passes.shape_prop import ShapePropPass
 from fxfusion.passes.memory_plan import MemoryPlanningPass, TensorAlloc
 
 
-def get_plan(model: nn.Module, x: torch.Tensor):
+def get_plan(model: nn.Module, x: torch.Tensor, memory_alignment: int = 64):
     fused = FusionPass().run(model)
     ShapePropPass(fused).propagate(x)
-    planner = MemoryPlanningPass(fused)
+    planner = MemoryPlanningPass(fused, alignment=memory_alignment)
     plan = planner.run()
     return fused, plan
 
@@ -32,6 +32,7 @@ def test_arena_size_nonzero():
         def __init__(self):
             super().__init__()
             self.conv = nn.Conv2d(3, 64, 3, padding=1)
+
         def forward(self, x): return self.conv(x)
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 3, 32, 32))
@@ -48,6 +49,7 @@ def test_arena_size_not_larger_than_naive():
                 nn.Linear(256, 256), nn.ReLU(),
                 nn.Linear(256, 256), nn.ReLU(),
             )
+
         def forward(self, x): return self.layers(x)
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 256))
@@ -66,6 +68,7 @@ def test_activation_offsets_within_arena():
             super().__init__()
             self.conv1 = nn.Conv2d(3, 64, 3, padding=1)
             self.conv2 = nn.Conv2d(64, 64, 3, padding=1)
+
         def forward(self, x): return self.conv2(self.conv1(x))
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 3, 32, 32))
@@ -81,13 +84,40 @@ def test_offsets_are_8_byte_aligned():
         def __init__(self):
             super().__init__()
             self.conv = nn.Conv2d(3, 64, 3, padding=1)
+
         def forward(self, x): return self.conv(x)
 
-    fused, plan = get_plan(M().eval(), torch.randn(1, 3, 32, 32))
+    fused, plan = get_plan(M().eval(), torch.randn(
+        1, 3, 32, 32), memory_alignment=8)
     activations = allocs_of_kind(fused, "activation")
     for alloc in activations:
         assert alloc.mem_offset is not None
         assert alloc.mem_offset % 8 == 0, f"Offset {alloc.mem_offset} not aligned"
+
+
+def test_unaligned_activation_size_is_rounded_up_to_alignment():
+    class M(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.fc = nn.Linear(7, 63)
+
+        def forward(self, x): return self.fc(x)
+
+    fused, plan = get_plan(M().eval(), torch.randn(1, 7), memory_alignment=64)
+
+    activations = allocs_of_kind(fused, "activation")
+    assert len(activations) == 1
+
+    alloc = activations[0]
+
+    raw_size = 1 * 63 * 4
+    aligned_size = 256
+
+    assert raw_size == 252
+    assert alloc.size_bytes == aligned_size
+    assert alloc.mem_offset is not None
+    assert alloc.mem_offset % 64 == 0
+    assert plan.arena_size == aligned_size
 
 
 def test_no_overlap_between_live_activations():
@@ -97,6 +127,7 @@ def test_no_overlap_between_live_activations():
             self.conv1 = nn.Conv2d(3, 64, 3, padding=1)
             self.conv2 = nn.Conv2d(64, 64, 3, padding=1)
             self.conv3 = nn.Conv2d(64, 64, 3, padding=1)
+
         def forward(self, x):
             a = self.conv1(x)
             b = self.conv2(a)
@@ -116,7 +147,8 @@ def test_no_overlap_between_live_activations():
         if alloc is None or alloc.kind != "activation" or alloc.mem_offset is None:
             continue
         live_end = last_use.get(node.name, i)
-        intervals.append((alloc.mem_offset, alloc.mem_offset + alloc.size_bytes, i, live_end, node.name))
+        intervals.append((alloc.mem_offset, alloc.mem_offset +
+                         alloc.size_bytes, i, live_end, node.name))
 
     for i, (s1, e1, def1, end1, n1) in enumerate(intervals):
         for s2, e2, def2, end2, n2 in intervals[i + 1:]:
@@ -135,6 +167,7 @@ def test_input_has_no_offset():
         def __init__(self):
             super().__init__()
             self.fc = nn.Linear(64, 64)
+
         def forward(self, x): return self.fc(x)
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 64))
@@ -150,6 +183,7 @@ def test_consts_have_no_offset():
         def __init__(self):
             super().__init__()
             self.fc = nn.Linear(64, 64)
+
         def forward(self, x): return self.fc(x)
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 64))
@@ -185,6 +219,7 @@ def test_output_aliases_last_tensor():
         def __init__(self):
             super().__init__()
             self.fc = nn.Linear(64, 10)
+
         def forward(self, x): return self.fc(x)
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 64))
@@ -212,10 +247,11 @@ def test_buffer_reuse_occurs():
                 nn.Linear(256, 256), nn.ReLU(),
                 nn.Linear(256, 256), nn.ReLU(),
             )
+
         def forward(self, x): return self.layers(x)
 
     fused, plan = get_plan(M().eval(), torch.randn(1, 256))
     activations = allocs_of_kind(fused, "activation")
     offsets = [a.mem_offset for a in activations if a.mem_offset is not None]
     assert len(offsets) > len(set(offsets)), \
-        "Expected buffer reuse but all offsets are unique"
+           "Expected buffer reuse but all offsets are unique"
