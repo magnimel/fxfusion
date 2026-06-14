@@ -8,10 +8,10 @@ void conv2d(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& ou
     const auto& b   = reg[input_ids[2]];
     auto& out        = reg[output_ids[0]];
 
-    const std::vector<int64_t> stride   = {params[0], params[1]};
-    const std::vector<int64_t> padding  = {params[2], params[3]};
-    const std::vector<int64_t> dilation = {params[4], params[5]};
-    const int64_t groups                =  params[6];
+    const std::vector<int64_t> stride   = {params.ints[0], params.ints[1]};
+    const std::vector<int64_t> padding  = {params.ints[2], params.ints[3]};
+    const std::vector<int64_t> dilation = {params.ints[4], params.ints[5]};
+    const int64_t groups                =  params.ints[6];
 
     out.copy_(torch::conv2d(x, w, b, stride, padding, dilation, groups));
 }

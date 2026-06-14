@@ -7,6 +7,7 @@ void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     const auto& w = reg[input_ids[1]];
     const auto& b = reg[input_ids[2]];
     auto& out      = reg[output_ids[0]];
+    
     out.copy_(torch::relu(torch::linear(x, w, b)));
 }
 
