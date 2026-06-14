@@ -9,8 +9,7 @@ RuntimeGraph::RuntimeGraph(const fxfusion::Graph* graph, const torch::Device& de
     OpRegistry registry(device);  
     nodes_.reserve(graph->nodes()->size());
     for (const auto* node : *graph->nodes()) {
-        if (node->op_code() == OpCode_Placeholder || 
-            node->op_code() == OpCode_View) {
+        if (node->op_code() == OpCode_NoOp){
             continue;
         }
         KernelFn kernel = registry.get(node->op_code());

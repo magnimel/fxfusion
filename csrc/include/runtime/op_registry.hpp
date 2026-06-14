@@ -15,21 +15,29 @@ struct KernelSet {
     KernelFn add;
     KernelFn add_relu;
     KernelFn relu;
+    KernelFn mul;
     KernelFn max_pool2d;
     KernelFn avg_pool2d;
-    KernelFn view;
     KernelFn adaptive_avg_pool2d;
+    KernelFn transpose;
+    KernelFn size;
+    KernelFn narrow;
+    KernelFn embedding;
+    KernelFn layer_norm;
+    KernelFn add_layer_norm;
+    KernelFn mha;
+    KernelFn feedforward;
 };
 
 class OpRegistry {
 public:
     explicit OpRegistry(const torch::Device& device);
+
     void register_op(fxfusion::OpCode op_code, KernelFn fn);
     KernelFn get(fxfusion::OpCode op_code) const;
-    
 
 private:
     std::vector<KernelFn> registry_;
 };
 
-} 
+}
