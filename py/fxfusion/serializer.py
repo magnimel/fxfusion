@@ -288,7 +288,7 @@ class Serializer:
     def _build_int_vector(self, values: list[int], start_vector_fn) -> int:
         start_vector_fn(self.builder, len(values))
         for value in reversed(values):
-            self.builder.PrependInt32(int(value))
+            self.builder.PrependInt64(int(value))
         return self.builder.EndVector()
 
     def _build_float_vector(self, values: list[float], start_vector_fn) -> int:
