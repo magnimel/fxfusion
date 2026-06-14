@@ -1,0 +1,4 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cpu,PyTorch,79.6393,1.05
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cpu,torch.compile,81.0543,1.06
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cpu,FXFusion,76.2040,1.00

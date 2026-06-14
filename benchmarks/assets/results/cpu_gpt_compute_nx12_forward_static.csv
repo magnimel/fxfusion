@@ -1,0 +1,4 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cpu,PyTorch,16.2105,1.08
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cpu,torch.compile,16.1423,1.08
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cpu,FXFusion,15.0013,1.00
