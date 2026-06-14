@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from layers.feedforward import FeedForward
-from layers.attention import MultiHeadAttention   
+from fxfusion.models.transformer.layers.feedforward import FeedForward
+from fxfusion.models.transformer.layers.attention import MultiHeadAttention   
 
 class DecoderBlock(nn.Module):
     def __init__(self, d_model: int, h: int, expansion_factor: int, dropout: float = 0.1):
@@ -14,7 +14,7 @@ class DecoderBlock(nn.Module):
         self.norm3 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
         
-    def forward(self, x, encoder_output, src_mask=None, tgt_mask=None):
+    def forward(self, x, encoder_output, src_mask, tgt_mask):
         norm_x = self.norm1(x)
         x = x + self.dropout(self.self_attn(norm_x, norm_x, norm_x, tgt_mask))
         x = x + self.dropout(self.cross_attn(self.norm2(x), encoder_output, encoder_output, src_mask))

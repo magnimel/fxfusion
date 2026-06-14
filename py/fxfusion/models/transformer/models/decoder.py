@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from layers.embedding import InputEmbedding, PositionalEncoding
-from blocks.decoder_block import DecoderBlock
+from fxfusion.models.transformer.layers.embedding import InputEmbedding, PositionalEncoding
+from fxfusion.models.transformer.blocks.decoder_block import DecoderBlock
 
 class Decoder(nn.Module):
     def __init__(self, d_model: int, h: int, vocab_size: int, expansion_factor: int, dropout: float = 0.1, Nx: int = 1):
@@ -16,7 +16,7 @@ class Decoder(nn.Module):
         ])
         self.linear = nn.Linear(d_model, vocab_size)
         
-    def forward(self, x, encoder_output, src_mask=None, tgt_mask=None):
+    def forward(self, x, encoder_output, src_mask, tgt_mask):
         x = self.in_embedding(x)
         x = self.pos_encoding(x)
 

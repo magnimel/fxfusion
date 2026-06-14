@@ -16,17 +16,18 @@ class MultiHeadAttention(nn.Module):
         self.W_o = nn.Linear(d_model, d_model)
         self.attn_dropout = nn.Dropout(dropout) 
 
-    def forward(self, q, k, v, mask=None):
+    def forward(self, q, k, v, mask):
         batch_size = q.size(0)
         q = self.W_q(q).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
         k = self.W_k(k).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
         v = self.W_v(v).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
 
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
-        if mask is not None: scores = scores.masked_fill(mask == 0, float("-inf"))
+        scores = scores.masked_fill(mask == 0, float("-inf"))
         
         attn = self.attn_dropout(F.softmax(scores, dim=-1))
         
         context = torch.matmul(attn, v)
+        
         context = context.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
         return self.W_o(context)

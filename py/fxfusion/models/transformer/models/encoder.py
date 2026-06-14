@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-from layers.embedding import InputEmbedding, PositionalEncoding
-from blocks.encoder_block import EncoderBlock
+from fxfusion.models.transformer.layers.embedding import InputEmbedding, PositionalEncoding
+from fxfusion.models.transformer.blocks.encoder_block import EncoderBlock
+
 
 class Encoder(nn.Module):
     def __init__(self, d_model: int, h: int, vocab_size: int, expansion_factor: int, dropout: float = 0.1, Nx: int = 1):
@@ -14,8 +15,8 @@ class Encoder(nn.Module):
             EncoderBlock(d_model, h, expansion_factor, dropout)
             for _ in range(Nx)
         ])
-        
-    def forward(self, x, mask=None):
+
+    def forward(self, x, mask):
         x = self.in_embedding(x)
         x = self.pos_encoding(x)
 
