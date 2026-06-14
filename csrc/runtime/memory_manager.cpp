@@ -9,7 +9,9 @@ inline torch::ScalarType get_dtype(const fxfusion::Tensor* tensor) {
         case fxfusion::DType_Float16: return torch::kFloat16;
         case fxfusion::DType_Int32:   return torch::kInt32;
         case fxfusion::DType_Int64:   return torch::kInt64;
-        default: throw std::runtime_error("Unsupported DType in FlatBuffer");
+        case fxfusion::DType_Bool:    return torch::kBool;
+        default:
+            throw std::runtime_error("Unsupported DType in FlatBuffer");
     }
 }
 
@@ -17,6 +19,12 @@ inline std::vector<int64_t> get_shape(const fxfusion::Tensor* tensor) {
     std::vector<int64_t> shape;
     for(auto dim : *tensor->shape()) shape.push_back(dim);
     return shape;
+}
+
+inline int64_t get_numel(const std::vector<int64_t>& shape) {
+    int64_t numel = 1;
+    for (const auto dim : shape) numel *= dim;
+    return numel;
 }
 
 MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& device) {
@@ -48,6 +56,7 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
 
         }  else if (kind == fxfusion::TensorKind_Activation || kind == fxfusion::TensorKind_Output) {
             TORCH_CHECK(arena_.defined(), "Arena tensor is not allocated")
+            TORCH_CHECK(tensor->offset() >= 0, "Arena-backed tensor has invalid offset");
 
             size_t offset = static_cast<size_t>(tensor->offset());
             uint8_t* raw_ptr = arena_.data_ptr<uint8_t>();
@@ -61,33 +70,50 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
                 output_ids_.push_back(id);
             }
 
+        } else if (kind == fxfusion::TensorKind_Alias) {
+
+            if (tensor->offset() >= 0) {
+                TORCH_CHECK(arena_.defined(), "Arena tensor is not allocated");
+
+                size_t offset = static_cast<size_t>(tensor->offset());
+                uint8_t* raw_ptr = arena_.data_ptr<uint8_t>();
+
+                registry_[id] = torch::from_blob(
+                    raw_ptr + offset, shape,
+                    torch::TensorOptions().device(device).dtype(dtype)
+                );
+            } else {
+                int32_t src_id = tensor->alias_of();
+                TORCH_CHECK(src_id >= 0 && src_id < registry_.size(), "Invalid alias source ID");
+                TORCH_CHECK(registry_[src_id].defined(), "Alias source tensor is not defined");
+
+                if (registry_[src_id].numel() == get_numel(shape)) {
+                    registry_[id] = registry_[src_id].view(shape);
+                } else {
+                    // Resolve in kernel execution if numel doesn't match, as it might be a narrow alias
+                    
+                }
+            }
+            
         } else if (kind == fxfusion::TensorKind_Input) {
             input_ids_.push_back(id);
 
-        } else if (kind == fxfusion::TensorKind_Alias) {
-            int alias_of = tensor->alias_of();
-            TORCH_CHECK(alias_of >= 0, "Alias tensor missing valid alias_of");
-
-            aliases_.push_back(AliasInstruction{ id,
-                alias_of, get_shape(tensor)
-            });
+        } else {
+            throw std::runtime_error("Unsupported TensorKind in FlatBuffer");
         }
     }
+
     outputs_.reserve(output_ids_.size());
     for (auto id : output_ids_) {
         outputs_.push_back(registry_[id]);
     }
 }
 
-void MemoryManager::bind_inputs_and_aliases(const std::vector<torch::Tensor>& inputs) {
+void MemoryManager::bind_inputs(const std::vector<torch::Tensor>& inputs) {
     TORCH_CHECK(inputs.size() == input_ids_.size(), "Input count mismatch");
 
     for (size_t i = 0; i < inputs.size(); ++i) {
         registry_[input_ids_[i]] = inputs[i];
-    }
-
-    for (const auto& alias : aliases_) {
-        registry_[alias.id] = registry_[alias.source_id].view(alias.shape);
     }
 }
 

@@ -36,7 +36,7 @@ const std::vector<torch::Tensor>& ExecutionEngine::run(const std::vector<torch::
         );
     }
 
-    memory_manager_->bind_inputs_and_aliases(inputs);
+    memory_manager_->bind_inputs(inputs);
     auto& registry = memory_manager_->get_registry();  
     runtime_graph_->execute(registry);
     return memory_manager_->get_outputs();
