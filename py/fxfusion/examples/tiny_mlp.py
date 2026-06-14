@@ -25,7 +25,7 @@ def main():
     model = TinyMLP().eval()
     x = torch.randn(1, 4096)
     engine = Engine(model, [x], model_name="tiny_mlp", device="cpu", DEBUG=True)
-    out = engine.run(x)[0]
+    out = engine.run([x])[0]
     print(out)
 
 if __name__ == "__main__":
