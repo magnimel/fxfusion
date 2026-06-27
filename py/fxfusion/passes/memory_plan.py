@@ -66,7 +66,7 @@ class MemoryPlanningPass:
             torch.narrow,
         ):
             return self._is_safe_unary_alias(node, allow_external_alias=True)
-        if node.op == "call_method" and node.target in ("view", "reshape", "flatten"):
+        if node.op == "call_method" and node.target in ("view", "reshape", "flatten", "contiguous"):
             return self._is_safe_unary_alias(node, allow_external_alias=True)
         return False
 
