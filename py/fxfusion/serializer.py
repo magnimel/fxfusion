@@ -225,7 +225,12 @@ class Serializer:
         return [*self._pair(mod.output_size), *self._grid_block()], []
 
     def _transpose_params(self, node: fx.Node) -> tuple[list[int], list[float]]:
-        return [int(node.args[1]), int(node.args[2])], []
+        dim0, dim1 = int(node.args[1]), int(node.args[2])
+        if dim0 < 0:
+            dim0 += len(node.meta["shape"])
+        if dim1 < 0:
+            dim1 += len(node.meta["shape"])
+        return [dim0, dim1], []
 
     def _size_params(self, node: fx.Node) -> tuple[list[int], list[float]]:
         return [int(node.args[1])], []
