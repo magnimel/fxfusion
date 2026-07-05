@@ -117,7 +117,7 @@ class ShapePropPass:
         elif isinstance(result, int):
             scalar = torch.tensor(
                 result,
-                dtype=torch.int32,
+                dtype=torch.int64,
                 device=scalar_device_from_inputs(),
             )
 
