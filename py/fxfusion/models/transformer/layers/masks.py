@@ -19,7 +19,21 @@ def none_mask(tokens: torch.Tensor, pad_idx: int = 0) -> torch.Tensor:
         device=tokens.device,
         dtype=torch.bool,
     )
+    
+def random_mask(tokens: torch.Tensor, p_keep: float = 0.5, seed: int | None = None) -> torch.Tensor:
+    # random_mask: [batch, 1, seq_len, seq_len]
+    # Randomly allows/blocks positions independently, useful for stress-testing
+    # edge cases like fully-masked rows (all False for some query position),
+    # which torch.softmax does NOT guard against — see note above.
+    B, T = tokens.size(0), tokens.size(1)
 
+    generator = torch.Generator(device=tokens.device)
+    if seed is not None:
+        generator.manual_seed(seed)
+
+    return (
+        torch.rand((B, 1, T, T), device=tokens.device, generator=generator) < p_keep
+    )
 
 def causal_mask(tokens: torch.Tensor) -> torch.Tensor:
     # causal_mask: [seq_len, seq_len]
