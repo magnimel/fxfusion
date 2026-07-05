@@ -2,7 +2,8 @@
 
 namespace fxfusion::kernels::cpu {
 
-void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params) {
+void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
+    
     const auto& x               = reg[input_ids[0]];
     const auto& mask            = reg[input_ids[1]];
     const auto& qkv_weight      = reg[input_ids[2]];
@@ -37,12 +38,12 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
     // Attention scores
     auto scores = torch::matmul(q, k.transpose(-2, -1)) / scale_divisor;
     
-    scores = scores.masked_fill(mask == 0, -std::numeric_limits<float>::infinity());
+    scores = scores.masked_fill(mask == 0, -INFINITY);
 
     auto attn = torch::softmax(scores, -1);
 
     // Weighted sum + reshape
-    auto ctx = torch::matmul(attn, v)
+    auto ctx = torch::matmul(attn, v) 
                    .transpose(1, 2)
                    .contiguous()
                    .view({batch, seq, d_model});

@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cpu {
 
-void add_layer_norm(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params) {
+void add_layer_norm(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
     const auto& a      = reg[input_ids[0]];
     const auto& b      = reg[input_ids[1]];
     const auto& weight = reg[input_ids[2]];

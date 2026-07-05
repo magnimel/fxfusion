@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cpu {
 
-void avg_pool2d(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params) {
+void avg_pool2d(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
     const auto& x = reg[input_ids[0]];
     auto& out      = reg[output_ids[0]];
 

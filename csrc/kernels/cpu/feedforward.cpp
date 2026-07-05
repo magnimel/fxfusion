@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cpu {
 
-void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params&) {
+void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params&, const Cache* cache_base) {
     const auto& x   = reg[input_ids[0]];
     const auto& w1  = reg[input_ids[1]];
     const auto& b1  = reg[input_ids[2]];
