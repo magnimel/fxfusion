@@ -5,7 +5,7 @@
 
 namespace fxfusion {
 
-RuntimeGraph::RuntimeGraph(const fxfusion::Graph* graph, const torch::Device& device) {
+RuntimeGraph::RuntimeGraph(const fxfusion::Graph* graph, TensorRegistry& reg, const torch::Device& device) {
     OpRegistry registry(device);  
     nodes_.reserve(graph->nodes()->size());
     for (const auto* node : *graph->nodes()) {
@@ -13,7 +13,7 @@ RuntimeGraph::RuntimeGraph(const fxfusion::Graph* graph, const torch::Device& de
             continue;
         }
         KernelFn kernel = registry.get(node->op_code());
-        nodes_.emplace_back(node, kernel);
+        nodes_.emplace_back(node, kernel, reg);
     }
 }
 

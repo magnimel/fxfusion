@@ -24,7 +24,7 @@ ExecutionEngine::ExecutionEngine(const std::string& graph_path, const std::strin
 
     const auto* graph = fxfusion::GetGraph(buffer_.data());
     memory_manager_ = std::make_unique<MemoryManager>(graph, device_);
-    runtime_graph_ = std::make_unique<RuntimeGraph>(graph, device_);
+    runtime_graph_ = std::make_unique<RuntimeGraph>(graph, memory_manager_->get_registry(), device_);
 
 }
 

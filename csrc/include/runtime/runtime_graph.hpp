@@ -8,7 +8,7 @@ namespace fxfusion {
 
 class RuntimeGraph {
 public:
-    RuntimeGraph(const fxfusion::Graph* graph, const torch::Device& device);
+    RuntimeGraph(const fxfusion::Graph* graph, TensorRegistry& reg, const torch::Device& device);
     void execute(TensorRegistry& reg);
 
 private:

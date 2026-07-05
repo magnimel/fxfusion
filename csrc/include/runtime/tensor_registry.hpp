@@ -13,11 +13,16 @@ struct Params {
     std::vector<float> floats;
 };
 
+struct Cache {
+    virtual ~Cache() = default;
+};
+
 using KernelFn = void (*)(
     TensorRegistry&,
     const TensorIds&,
     const TensorIds&,
-    const Params&
+    const Params&,
+    const Cache*
 );
 
 }
