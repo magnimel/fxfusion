@@ -8,6 +8,7 @@ from fxfusion.models.transformer.layers.masks import (
 from fxfusion.models.transformer.inference import (
     greedy_decode_static, engine_decode_static,
 )
+from tests.utils import compare_outputs
 
 
 @torch.inference_mode()
@@ -27,9 +28,9 @@ def main():
 
     tokens = torch.randint(1, vocab_size, (batch_size, initial_len))
     mask_builder = StaticDecoderMaskBuilder(max_seq_len=max_seq_len)
-    
+
     static_tokens = make_static_buffer(tokens, max_seq_len=max_seq_len, pad_idx=0)
-    static_mask = mask_builder(static_tokens, current_len=initial_len,pad_idx=0 )
+    static_mask = mask_builder(static_tokens, current_len=initial_len, pad_idx=0)
 
     engine = Engine(
         model,
@@ -53,7 +54,9 @@ def main():
         max_seq_len=max_seq_len,
     )
 
-    print(torch.equal(engine_tokens, torch_tokens))
+    ok, info = compare_outputs(engine_tokens, torch_tokens)
+    print("Outputs match:", ok)
+    print("Info:", info)
     print(engine_tokens)
 
 
