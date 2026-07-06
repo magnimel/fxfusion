@@ -106,6 +106,12 @@ class ShapePropPass:
             node.meta["dtype"] = result.dtype
             node.meta["device"] = result.device
             return
+        
+        if isinstance(result, torch.Size):
+            node.meta["shape"] = (len(result),)
+            node.meta["dtype"] = torch.int64
+            node.meta["device"] = scalar_device_from_inputs()
+            return
 
         if isinstance(result, bool):
             scalar = torch.tensor(
