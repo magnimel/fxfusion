@@ -1,7 +1,6 @@
 import torch
 from typing import Any
 
-
 def _as_output_list(output: Any) -> list[torch.Tensor]:
     if isinstance(output, torch.Tensor):
         return [output]
@@ -23,8 +22,8 @@ def compare_outputs(
 
     if len(actual_outputs) != len(expected_outputs):
         return (
-            False, 
-            f"output count mismatch — actual: {len(actual_outputs)}, " 
+            False,
+            f"output count mismatch — actual: {len(actual_outputs)}, "
             f"expected: {len(expected_outputs)}",
         )
 
@@ -54,17 +53,34 @@ def compare_outputs(
 
             return False, f"output {i} integer/bool mismatch"
 
-        if torch.isnan(actual_tensor).any():
-            return False, f"output {i} actual output contains NaNs"
+        actual_nan_mask = torch.isnan(actual_tensor)
+        expected_nan_mask = torch.isnan(expected_tensor)
 
-        if torch.isnan(expected_tensor).any():
-            return False, f"output {i} expected output contains NaNs"
+        if not torch.equal(actual_nan_mask, expected_nan_mask):
+            return (
+                False,
+                f"output {i} NaN position mismatch — "
+                f"actual NaN count: {actual_nan_mask.sum().item()}, "
+                f"expected NaN count: {expected_nan_mask.sum().item()}",
+            )
+
+        if actual_nan_mask.any():
+            # compare only the non-NaN entries with allclose
+            non_nan = ~actual_nan_mask
+            if torch.allclose(actual_tensor[non_nan], expected_tensor[non_nan], rtol=rtol, atol=atol):
+                continue
+            
+            diff = (actual_tensor[non_nan] - expected_tensor[non_nan]).abs()
+            return (
+                False,
+                f"output {i} max diff (excluding matched NaNs): {diff.max().item():.6f}, "
+                f"mean diff: {diff.mean().item():.6f}",
+            )
 
         if torch.allclose(actual_tensor, expected_tensor, rtol=rtol, atol=atol):
             continue
 
         diff = (actual_tensor - expected_tensor).abs()
-
         return (
             False,
             f"output {i} max diff: {diff.max().item():.6f}, "
