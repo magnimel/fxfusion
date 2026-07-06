@@ -97,6 +97,7 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
             
         } else if (kind == fxfusion::TensorKind_Input) {
             input_ids_.push_back(id);
+            registry_[id] = torch::empty(shape, torch::TensorOptions().device(device).dtype(dtype));
 
         } else {
             throw std::runtime_error("Unsupported TensorKind in FlatBuffer");
