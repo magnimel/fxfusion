@@ -81,6 +81,13 @@ target_compile_options(fxfusion_extension PRIVATE
     ${TORCH_CXX_FLAGS}
 )
 
+if(CUDAToolkit_FOUND)
+    set_target_properties(fxfusion_extension PROPERTIES
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    )
+endif()
+
 set_target_properties(fxfusion_extension PROPERTIES
     PREFIX ""
     SUFFIX ".so"
