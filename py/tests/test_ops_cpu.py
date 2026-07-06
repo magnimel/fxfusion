@@ -217,6 +217,51 @@ def test_mlp():
     run("mlp", M().eval(), [torch.randn(4, 256)])
 
 
+def test_transpose_multidim():
+    class M(nn.Module):
+        def forward(self, x):
+            # transpose(0, 2): non-adjacent dims
+            return x.transpose(0, 2)
+
+    run("transpose_multidim", M().eval(), [torch.randn(2, 5, 7, 3)])
+
+
+def test_transpose_then_view():
+    class M(nn.Module):
+        def forward(self, x):
+            h = x.transpose(0, 2)          # (2,8,6) -> (6,8,2)
+            h = h.contiguous().view(6, 16) # (6,8,2) -> (6,16)
+            return h.transpose(0, 1)       # (6,16) -> (16,6)
+
+    run("transpose_then_view", M().eval(), [torch.randn(2, 8, 6)])
+
+
+def test_mul_tensor_tensor():
+    class M(nn.Module):
+        def forward(self, x):
+            return x * x
+
+    run("mul_tensor_tensor", M().eval(), [torch.randn(4, 64)])
+
+
+def test_mul_tensor_scalar_float():
+    class M(nn.Module):
+        def forward(self, x):
+            a = x * 2.5
+            return 0.5 * a
+
+    run("mul_tensor_scalar_float", M().eval(), [torch.randn(4, 64)])
+
+
+def test_mul_tensor_scalar_int():
+    class M(nn.Module):
+        def forward(self, x):
+            a = x * 3
+            return 2 * a
+
+    run("mul_tensor_scalar_int", M().eval(), [torch.randn(4, 64)])
+
+
 def test_gpt_forward_static_shape():
     torch.manual_seed(0)
 
@@ -298,6 +343,27 @@ def test_gpt_static_decode():
 
     ok, info = compare_outputs(actual_tokens, expected_tokens)
     assert ok, info
+
+
+def test_mha_fully_masked_row_nan_parity():
+    torch.manual_seed(0)
+
+    d_model = 32
+    h = 4
+    vocab_size = 128
+    expansion_factor = 2
+    dropout = 0.0
+    Nx = 1
+    batch_size = 1
+    seq_len = 6
+
+    model = GPT(d_model, h, vocab_size, expansion_factor, dropout, Nx).eval()
+    tokens = torch.randint(1, vocab_size, (batch_size, seq_len))
+
+    mask = torch.ones((batch_size, 1, seq_len, seq_len), dtype=torch.bool)
+    mask[0, 0, 0, :] = False
+
+    run("mha_fully_masked_row", model, [tokens, mask], atol=1e-3, rtol=1e-3)
 
 
 def test_resnet18():
