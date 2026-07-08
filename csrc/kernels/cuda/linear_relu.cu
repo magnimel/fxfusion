@@ -2,6 +2,8 @@
 
 namespace fxfusion::kernels::cuda {
 
+#define TILE_SIZE 16
+
 __global__ void linear_relu_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t N, int64_t K) {
 
     __shared__ float xds[TILE_SIZE][TILE_SIZE];
