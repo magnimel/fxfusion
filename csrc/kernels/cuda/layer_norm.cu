@@ -62,7 +62,7 @@ void layer_norm_cpu_ref(const float* x, const float* w, const float* b, float* o
         }
         var /= static_cast<float>(N);
 
-        float inv_std = 1.0f / std::sqrtf(var + eps);
+        float inv_std = 1.0f / sqrtf(var + eps);
         for(int j = 0; j < N; j++) {
             float y = (x[j + i * N] - mean) * inv_std;
             y = y * w[j] + b[j];
