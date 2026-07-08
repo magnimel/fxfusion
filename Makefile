@@ -3,8 +3,8 @@
 # CC := /opt/homebrew/bin/gcc-15
 # CXX := /opt/homebrew/bin/g++-15
 
-CC := /usr/bin/clang 
-CXX := /usr/bin/clang++
+CC := /usr/bin/gcc 
+CXX := /usr/bin/g++
 
 BUILD_TYPE ?= Release
 BUILD_DIR := csrc/build
