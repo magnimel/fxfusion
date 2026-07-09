@@ -146,6 +146,9 @@ class StaticDecoderMaskBuilder(nn.Module):
         if T > self.max_seq_len:
             raise ValueError(f"Token length {T} exceeds max_seq_len {self.max_seq_len}")
         
+        if self.cached_causal_mask.device != tokens.device:
+            raise RuntimeError(f"Device mismatch: call mask_builder.to({tokens.device}) before use")
+        
         prefix_padding_mask = static_prefix_mask(tokens, current_len) & padding_mask(tokens, pad_idx)
         sliced_causal = self.cached_causal_mask[:T, :T]
         return prefix_padding_mask & sliced_causal
