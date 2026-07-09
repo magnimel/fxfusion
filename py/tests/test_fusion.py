@@ -8,7 +8,7 @@ def get_fused_model(model: nn.Module) -> nn.Module:
     return FusionPass().run(model)
 
 
-def get_opcodes(model: nn.Module, print_graph: bool = True) -> list[str]:
+def get_opcodes(model: nn.Module, print_graph: bool = False) -> list[str]:
     fused = get_fused_model(model)
 
     if print_graph:
