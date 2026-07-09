@@ -1,0 +1,24 @@
+import sys
+from pathlib import Path
+
+import torch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "py"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+torch.set_grad_enabled(False)
+
+from mlp_dispatch import main as run_mlp_dispatch
+from mlp_compute import main as run_mlp_compute
+from resnet import main as run_resnet
+from gpt_compute import main as run_gpt_compute
+from gpt_dispatch import main as run_gpt_dispatch
+
+
+if __name__ == "__main__":
+    run_mlp_dispatch()
+    run_mlp_compute()
+    run_resnet()
+    run_gpt_compute()
+    run_gpt_dispatch()
