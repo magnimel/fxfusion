@@ -59,7 +59,7 @@ def benchmark(
     for _ in range(warmup):
         fn()
 
-    if device == "cuda":
+    if device.startswith("cuda"):
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is not available")
 
@@ -121,12 +121,7 @@ def save_chart(label: str, results: dict[str, float], filename: str):
 # CSV
 # -----------------------------------------------------------------------------
 
-def save_csv(
-    filename: str,
-    label: str,
-    device: str,
-    results: dict[str, float],
-):
+def save_csv(filename: str, label: str, device: str, results: dict[str, float]):
     path = RESULTS_DIR / f"{filename}.csv"
     write_header = not path.exists()
 
@@ -143,14 +138,10 @@ def save_csv(
 
     print(f"Saved {path}")
 
-def record_results(
-    label: str,
-    filename: str,
-    device: str,
-    results: dict[str, float],
-):
-    save_chart(label, results, f"cpu_{filename}")
-    save_csv(f"cpu_{filename}", label, device, results)
+def record_results( label: str, filename: str, device: str, results: dict[str, float]):
+    device_tag = device.replace(":", "")
+    save_chart(label, results, f"{device_tag}_{filename}")
+    save_csv(f"{device_tag}_{filename}", label, device, results)
 
 # -----------------------------------------------------------------------------
 # Models
