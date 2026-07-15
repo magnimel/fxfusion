@@ -10,6 +10,7 @@ from fxfusion.models.transformer.inference import (
 )
 from tests.utils import compare_outputs
 
+DEVICE = "cpu"
 
 @torch.inference_mode()
 def main():
@@ -20,24 +21,25 @@ def main():
     dropout = 0.0
     Nx = 1
 
-    batch_size = 1
+    batch_size = 2
     initial_len = 5
     max_seq_len = 10
 
-    model = GPT(d_model, h, vocab_size, expansion_factor, dropout, Nx).eval()
+    torch.manual_seed(6)  # fixed seed — reproduces the known-diverging case
 
-    tokens = torch.randint(1, vocab_size, (batch_size, initial_len))
-    mask_builder = StaticDecoderMaskBuilder(max_seq_len=max_seq_len)
+    model = GPT(d_model, h, vocab_size, expansion_factor, dropout, Nx).eval().to(DEVICE)
 
-    static_tokens = make_static_buffer(tokens, max_seq_len=max_seq_len, pad_idx=0)
-    static_mask = mask_builder(static_tokens, current_len=initial_len, pad_idx=0)
+    tokens = torch.randint(1, vocab_size, (batch_size, initial_len), device=DEVICE)
+    mask_builder = StaticDecoderMaskBuilder(max_seq_len=max_seq_len).to(DEVICE)
+
+    static_buffer = make_static_buffer(tokens, max_seq_len=max_seq_len, pad_idx=0)
 
     engine = Engine(
         model,
-        [static_tokens, static_mask],
+        [static_buffer, mask_builder(static_buffer, current_len=initial_len, pad_idx=0)],
         model_name="gpt",
-        device="cpu",
-        DEBUG=True,
+        device=DEVICE,
+        DEBUG=False,
     )
 
     torch_tokens = greedy_decode_static(
@@ -57,7 +59,6 @@ def main():
     ok, info = compare_outputs(engine_tokens, torch_tokens)
     print("Outputs match:", ok)
     print("Info:", info)
-    print(engine_tokens)
 
 
 if __name__ == "__main__":
