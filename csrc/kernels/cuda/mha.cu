@@ -259,7 +259,7 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
         int64_t K = d_model;
         int64_t M = batch * seq;
         int64_t N = qkv_dim;
-        dim3 block(16, 16);
+        dim3 block(TILE_SIZE, TILE_SIZE);
         dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
         linear_kernel<<<grid, block>>>(x_ptr, qkv_w_ptr, qkv_b_ptr, qkv, M, N, K);
     }
@@ -291,7 +291,7 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
         int64_t K = d_model;
         int64_t M = batch * seq;
         int64_t N = d_model;
-        dim3 block(16, 16);
+        dim3 block(TILE_SIZE, TILE_SIZE);
         dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
         linear_kernel<<<grid, block>>>(ctx, out_w_ptr, out_b_ptr, out_ptr, M, N, K);
     }
