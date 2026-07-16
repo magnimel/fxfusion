@@ -2,6 +2,7 @@
 
 namespace fxfusion::kernels::cuda {
 
+#define TILE_SIZE 32
 
 void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
     const auto* cache = static_cast<const FeedForwardCache*>(cache_base);
@@ -27,7 +28,7 @@ void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     int64_t N = w1.size(0);
     int64_t P = w2.size(0);
 
-    dim3 block(16, 16);
+    dim3 block(TILE_SIZE, TILE_SIZE);
 
     dim3 grid1((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
     linear_relu_kernel<<<grid1, block>>>(x_ptr, w1_ptr, b1_ptr, intermediate_ptr, M, N, K);
