@@ -6,14 +6,6 @@ from typing import Any, Dict, Optional, List
 from fxfusion.passes.fusion.ops import FUSION_REGISTRY, FusionOp
 from fxfusion.passes.fusion.types import FusionSpec, FusionContext, PassLevel
 
-
-def _infer_model_device(fx_model: fx.GraphModule) -> torch.device:
-    for p in fx_model.parameters():
-        return p.device
-    for b in fx_model.buffers():
-        return b.device
-    return torch.device("cpu")
-
 class FusionPass:
     def __init__(self, registry: Dict[int, FusionOp] = FUSION_REGISTRY) -> None:
         self.ctx: Optional[FusionContext] = None
@@ -23,21 +15,19 @@ class FusionPass:
         self.modules: Dict[str, Any] = {}
         self.fused_count = 0
 
-    def run(self, model: nn.Module) -> fx.GraphModule:
+    def run(self, model: nn.Module, device: str = "cpu") -> fx.GraphModule:
         self.fx_model = model if isinstance(model, fx.GraphModule) else fx.symbolic_trace(model)
         self.graph = self.fx_model.graph
         self.modules = dict(self.fx_model.named_modules())
         self.fused_count = 0
 
-        device = _infer_model_device(self.fx_model)
-
         ctx = FusionContext(
             fx_model=self.fx_model,
             graph=self.graph,
             modules=self.modules,
-            device=device,
+            device=torch.device(device),
         )
-        
+
         def _fusion_ops_for_phase(phase: PassLevel) -> list[FusionOp]:
             """Return fusion ops for a compiler phase in registry priority order."""
             return [op for op in self.registry if op.level == phase]
@@ -55,7 +45,7 @@ class FusionPass:
             self.graph.eliminate_dead_code()
             self.graph.lint()
             self.fx_model.recompile()
-            
+
         return self.fx_model
 
     def _commit_fusion(self, fusion_op: FusionOp, spec: FusionSpec) -> fx.Node:

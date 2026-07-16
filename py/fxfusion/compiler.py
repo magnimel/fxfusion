@@ -15,9 +15,13 @@ class Compiler:
         self.memory_alignment = memory_alignment
 
     def run(
-        self, model: nn.Module, *example_inputs, model_name: str | None = None
+        self,
+        model: nn.Module,
+        *example_inputs,
+        model_name: str | None = None,
+        device: str = "cpu",
     ) -> Tuple[fx.GraphModule, str]:
-        
+
         if model.training:
             raise RuntimeError(
                 "FXFusion only supports inference graphs. "
@@ -27,8 +31,8 @@ class Compiler:
         name = model_name or model.__class__.__name__.lower()
 
         with torch.inference_mode():
-            
-            fx_model = FusionPass().run(model)
+
+            fx_model = FusionPass().run(model, device=device)
             if self.DEBUG:
                 fx_model.graph.print_tabular()
 

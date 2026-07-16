@@ -23,6 +23,7 @@ class Engine:
             model,
             *example_inputs,
             model_name=model_name,
+            device=device,
         )
 
         self._engine = torch.classes.fxfusion_extension.ExecutionEngine(
