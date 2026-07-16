@@ -135,12 +135,30 @@ def test_linear_relu(device):
     run(device, "linear_relu", M().eval(), [torch.randn(1, 512)])
 
 
+def test_add(device):
+    # Plain add, distinct inputs — not fused into AddRelu.
+    class M(nn.Module):
+        def forward(self, x, y):
+            return x + y
+
+    run(device, "add", M().eval(), [torch.randn(2, 64, 56, 56), torch.randn(2, 64, 56, 56)])
+
+
 def test_add_relu(device):
     class M(nn.Module):
         def forward(self, x):
             return torch.relu(x + x)
 
     run(device, "add_relu", M().eval(), [torch.randn(1, 64, 56, 56)])
+
+
+def test_relu(device):
+    # Standalone relu, not fused with a preceding op.
+    class M(nn.Module):
+        def forward(self, x):
+            return torch.relu(x)
+
+    run(device, "relu", M().eval(), [torch.randn(2, 64, 56, 56)])
 
 
 def test_embedding(device):
@@ -167,6 +185,18 @@ def test_layernorm(device):
     run(device, "layernorm", M().eval(), [torch.randn(2, 10, 64)])
 
 
+def test_layernorm_no_affine(device):
+    class M(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.norm = nn.LayerNorm(64, elementwise_affine=False)
+
+        def forward(self, x):
+            return self.norm(x)
+
+    run(device, "layernorm_no_affine", M().eval(), [torch.randn(2, 10, 64)])
+
+
 def test_add_layernorm(device):
     class M(nn.Module):
         def __init__(self):
@@ -177,6 +207,18 @@ def test_add_layernorm(device):
             return self.norm(x + x)
 
     run(device, "add_layernorm", M().eval(), [torch.randn(2, 10, 64)])
+
+
+def test_add_layernorm_no_affine(device):
+    class M(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.norm = nn.LayerNorm(64, elementwise_affine=False)
+
+        def forward(self, x):
+            return self.norm(x + x)
+
+    run(device, "add_layernorm_no_affine", M().eval(), [torch.randn(2, 10, 64)])
 
 
 def test_feedforward(device):
@@ -281,6 +323,85 @@ def test_mul_tensor_scalar_int(device):
             return 2 * a
 
     run(device, "mul_tensor_scalar_int", M().eval(), [torch.randn(4, 64)])
+
+
+def test_mul_tensor_scalar_bool(device):
+    class M(nn.Module):
+        def forward(self, x):
+            a = x * True
+            return False * a
+
+    run(device, "mul_tensor_scalar_bool", M().eval(), [torch.randn(4, 64)])
+
+
+def test_narrow(device):
+    class M(nn.Module):
+        def forward(self, x):
+            return torch.narrow(x, 1, 0, 5)
+
+    run(device, "narrow", M().eval(), [torch.randn(2, 10, 64)])
+
+
+def test_narrow_dynamic_length(device):
+    class M(nn.Module):
+        def forward(self, x, y):
+            length = y.size(1)
+            return torch.narrow(x, 1, 0, length)
+
+    run(
+        device,
+        "narrow_dynamic_length",
+        M().eval(),
+        [torch.randn(2, 10, 64), torch.randn(2, 5, 64)],
+    )
+
+
+def test_size(device):
+    class M(nn.Module):
+        def forward(self, x):
+            return torch.narrow(x, 0, 0, x.size(0))
+
+    run(device, "size", M().eval(), [torch.randn(6, 64)])
+
+
+def test_narrow_then_add_broadcast_batch(device):
+    # pe has batch dim 1; x has batch dim 2 — add must broadcast.
+    class M(nn.Module):
+        def __init__(self, max_seq_len=20, d_model=64):
+            super().__init__()
+            pe = torch.randn(1, max_seq_len, d_model)
+            self.register_buffer("pe", pe)
+
+        def forward(self, x):
+            pe_slice = torch.narrow(self.pe, 1, 0, x.size(1))
+            return x + pe_slice
+
+    run(device, "narrow_then_add_broadcast_batch", M().eval(), [torch.randn(2, 10, 64)])
+
+
+def test_positional_encoding_batch2(device):
+    from fxfusion.models.transformer.layers.embedding import PositionalEncoding
+
+    d_model = 64
+    model = PositionalEncoding(d_model, max_seq_len=50, dropout=0.0).eval()
+    x = torch.randn(2, 10, d_model)
+
+    run(device, "positional_encoding_batch2", model, [x], atol=1e-4, rtol=1e-4)
+
+
+def test_mha_via_block_batch2(device):
+    from fxfusion.models.transformer.blocks.gpt_block import GPTBlock
+
+    d_model = 32
+    h = 4
+    seq_len = 6
+    batch_size = 2
+
+    model = GPTBlock(d_model, h, expansion_factor=2, dropout=0.0).eval()
+    x = torch.randn(batch_size, seq_len, d_model)
+    mask = torch.ones((batch_size, 1, seq_len, seq_len), dtype=torch.bool)
+
+    run(device, "mha_via_block_batch2", model, [x, mask], atol=1e-3, rtol=1e-3)
 
 
 def test_gpt_forward_static_shape(device):
