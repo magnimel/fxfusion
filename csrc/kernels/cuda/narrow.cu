@@ -6,9 +6,10 @@ void narrow(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& ou
     const auto&    x      = reg[input_ids[0]];
     const int64_t  dim    = params.ints[0];
     const int64_t  start  = params.ints[1];
-    const int64_t  length = reg[input_ids[1]].item<int64_t>();
+    int64_t length        = params.ints[2];
 
-    reg[output_ids[0]] = x.narrow(dim, start, length);
+    if (length < 0) length = reg[input_ids[1]].item<int64_t>();
+    reg[output_ids[0]].copy_(x.narrow(dim, start, length));
 }
 
 } 

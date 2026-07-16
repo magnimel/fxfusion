@@ -236,8 +236,13 @@ class Serializer:
         return [int(node.args[1])], []
     
     def _narrow_params(self, node: fx.Node) -> tuple[list[int], list[float]]:
-            dim, start = int(node.args[1]), int(node.args[2])
-            return [dim, start], []
+        dim, start = int(node.args[1]), int(node.args[2])
+        length_arg = node.args[3]
+
+        if isinstance(length_arg, fx.Node):
+            return [dim, start, -1], []
+        else:
+            return [dim, start, int(length_arg)], []
 
     def _mul_params(self, node: fx.Node) -> tuple[list[int], list[float]]:
         lhs, rhs = node.args[0], node.args[1]
