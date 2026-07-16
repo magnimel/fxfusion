@@ -143,6 +143,38 @@ __global__ void softmax_kernel(float* scores, int64_t batch, int64_t num_heads, 
     }
 }
 
+// Naive (non-tiled) reference implementation — NOT used in mha()'s dispatch,
+// kept for comparison/debugging only.
+//
+// Input:  qkv  {batch, seq, qkv_dim} (V slice used, offset by 2*d_model)
+//         attn {batch, num_heads, seq, seq} (post-softmax scores)
+// Output: ctx  {batch, seq, num_heads, head_dim} == {batch, seq, d_model}
+//              (heads concatenated along the feature axis)
+__global__ void ctx_kernel_ref(const float* qkv, const float* attn, float* ctx,
+                                int64_t batch, int64_t seq, int64_t num_heads,
+                                int64_t head_dim, int64_t d_model, int64_t qkv_dim)
+{
+    int64_t i = blockIdx.y * blockDim.y + threadIdx.y;
+    int64_t j = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t bh = blockIdx.z;
+    int64_t b = bh / num_heads;
+    int64_t h = bh % num_heads;
+
+    if (i >= seq || j >= head_dim) return;
+
+    float sum = 0.0f;
+    for (int64_t k = 0; k < seq; k++) {
+        int64_t a_offset = (b * num_heads * seq * seq) + (h * seq * seq) + i * seq + k;
+        int64_t v_offset = (b * seq * qkv_dim) + (k * qkv_dim) + 2 * d_model + h * head_dim + j;
+        sum += attn[a_offset] * qkv[v_offset];
+    }
+
+    int64_t out_idx = b * seq * num_heads * head_dim + i * num_heads * head_dim + h * head_dim + j;
+    ctx[out_idx] = sum;
+}
+
+// Tiled ctx kernel — used in mha()'s dispatch.
+//
 // Input:  qkv  {batch, seq, qkv_dim} (V slice used, offset by 2*d_model)
 //         attn {batch, num_heads, seq, seq} (post-softmax scores)
 // Output: ctx  {batch, seq, num_heads, head_dim} == {batch, seq, d_model}
@@ -265,4 +297,4 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
     }
 }
 
-} 
+}
