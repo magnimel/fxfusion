@@ -21,7 +21,7 @@ def main():
     dropout = 0.0
     Nx = 1
 
-    batch_size = 2
+    batch_size = 1
     initial_len = 5
     max_seq_len = 10
 
@@ -39,7 +39,7 @@ def main():
         [static_buffer, mask_builder(static_buffer, current_len=initial_len, pad_idx=0)],
         model_name="gpt",
         device=DEVICE,
-        DEBUG=False,
+        DEBUG=True,
     )
 
     torch_tokens = greedy_decode_static(
