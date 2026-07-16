@@ -30,51 +30,45 @@ inline int64_t get_numel(const std::vector<int64_t>& shape) {
 MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& device) {
     TORCH_CHECK(graph != nullptr, "Execution graph is not loaded");
 
-    if (graph->arena_size() > 0) {
-        arena_ = torch::empty(
-            {static_cast<int64_t>(graph->arena_size())},
-            torch::TensorOptions().device(device).dtype(torch::kUInt8)
-        );
-    }
+    int64_t arena_bytes = static_cast<int64_t>(graph->arena_size());
+    TORCH_CHECK(arena_bytes >= 0, "Arena size must not be negative, got ", arena_bytes);
+
+    arena_ = torch::empty({arena_bytes},
+        torch::TensorOptions().device(device).dtype(torch::kUInt8)
+    );
+
+    TORCH_CHECK(arena_.defined(), "Arena tensor is not allocated");
 
     registry_.resize(graph->tensors()->size());
 
-    for(const auto* tensor : *graph->tensors()) {
+    for (const auto* tensor : *graph->tensors()) {
         auto id = tensor->id();
         auto kind = tensor->kind();
         auto dtype = get_dtype(tensor);
         auto shape = get_shape(tensor);
-        
+
         if (kind == fxfusion::TensorKind_Constant) {
             TORCH_CHECK(tensor->data() != nullptr, "Constant tensor missing data");
-            
+
             auto _cpu_tensor = torch::from_blob(
-                (void*) tensor->data()->data(), shape, 
+                (void*) tensor->data()->data(), shape,
                 torch::TensorOptions().device(torch::kCPU).dtype(dtype)
             );
             registry_[id] = _cpu_tensor.to(device);
 
-        }  else if (kind == fxfusion::TensorKind_Activation || kind == fxfusion::TensorKind_Output) {
-            TORCH_CHECK(arena_.defined(), "Arena tensor is not allocated")
+        } else if (kind == fxfusion::TensorKind_Activation) {
             TORCH_CHECK(tensor->offset() >= 0, "Arena-backed tensor has invalid offset");
 
             size_t offset = static_cast<size_t>(tensor->offset());
             uint8_t* raw_ptr = arena_.data_ptr<uint8_t>();
-            
+
             registry_[id] = torch::from_blob(
-                raw_ptr + offset, shape, 
+                raw_ptr + offset, shape,
                 torch::TensorOptions().device(device).dtype(dtype)
             );
 
-            if (kind == fxfusion::TensorKind_Output) {
-                output_ids_.push_back(id);
-            }
-
-        } else if (kind == fxfusion::TensorKind_Alias) {
-
+        } else if (kind == fxfusion::TensorKind_Output || kind == fxfusion::TensorKind_Alias) {
             if (tensor->offset() >= 0) {
-                TORCH_CHECK(arena_.defined(), "Arena tensor is not allocated");
-
                 size_t offset = static_cast<size_t>(tensor->offset());
                 uint8_t* raw_ptr = arena_.data_ptr<uint8_t>();
 
@@ -90,11 +84,17 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
                 if (registry_[src_id].numel() == get_numel(shape)) {
                     registry_[id] = registry_[src_id].view(shape);
                 } else {
-                    // Resolve in kernel execution if numel doesn't match, as it might be a narrow alias
-                    
+                    throw std::runtime_error(
+                        "Alias numel mismatch for tensor id " + std::to_string(id) +
+                        " — runtime-shape-changing ops must not be marked as Alias kind"
+                    );
                 }
             }
-            
+
+            if (kind == fxfusion::TensorKind_Output) {
+                output_ids_.push_back(id);
+            }
+
         } else if (kind == fxfusion::TensorKind_Input) {
             input_ids_.push_back(id);
             registry_[id] = torch::empty(shape, torch::TensorOptions().device(device).dtype(dtype));
