@@ -482,7 +482,7 @@ def match_layernorm(
         else torch.ones(
             normalized_shape,
             dtype=torch.float32,
-            device=weight.device,
+            device=ctx.device,
         )
     )
 
