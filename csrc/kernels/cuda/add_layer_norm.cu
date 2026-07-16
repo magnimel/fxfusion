@@ -67,6 +67,10 @@ void add_layer_norm (TensorRegistry& reg, const TensorIds& input_ids, const Tens
     const int64_t M = (cache->data).M;
     const int64_t N = (cache->data).N;
 
+    TORCH_CHECK(x.numel() == M * N && z.numel() == M * N,
+                "add_layer_norm[cuda]: x/z shape mismatch, expected numel=", M * N,
+                " got x.numel()=", x.numel(), " z.numel()=", z.numel());
+
     dim3 block(256);
     dim3 grid(M);
 
