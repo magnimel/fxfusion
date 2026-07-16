@@ -37,6 +37,22 @@ __global__ void linear_relu_kernel(const float* x, const float* w, const float* 
     }
 }
 
+__global__ void linear_relu_kernel_ref(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t N, int64_t K) {
+    // naive, non-tiled version
+    
+    int64_t col = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t row = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if(row < M && col < N) {
+        float res = 0.0f;
+        for(int64_t k = 0; k < K; k++) {
+            res+= x[k + row * K] * w[k + col * K];
+        }
+        out[col + row * N] = fmaxf(0.0f, res + b[col]);
+    }
+}
+
+
 void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache*) {
     const auto& x = reg[input_ids[0]];
     const auto& w = reg[input_ids[1]];
@@ -53,7 +69,7 @@ void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     int64_t N = w.size(0);
 
     dim3 block(TILE_SIZE, TILE_SIZE);
-    dim3 grid((N + block.x - 1) / TILE_SIZE, (M + block.y - 1) / TILE_SIZE);
+    dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.x);
     linear_relu_kernel<<<grid, block>>>(x_ptr, w_ptr, b_ptr, out_ptr, M, N, K);
     
 }
