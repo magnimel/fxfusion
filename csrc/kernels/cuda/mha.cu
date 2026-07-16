@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cuda {
 
-#define TILE_SIZE 16
+#define TILE_SIZE 32
 
 // Naive (non-tiled) reference implementation — NOT used in mha()'s dispatch,
 // kept for comparison/debugging only.

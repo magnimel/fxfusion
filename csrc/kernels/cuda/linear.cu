@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cuda {
 
-#define TILE_SIZE 16
+#define TILE_SIZE 32
 
 __global__ void linear_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t N, int64_t K) {
 
