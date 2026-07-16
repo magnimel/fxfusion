@@ -21,6 +21,7 @@ class FusionContext:
     fx_model: fx.GraphModule
     graph: fx.Graph
     modules: Dict[str, Any]
+    device: torch.device
 
 
 @dataclass

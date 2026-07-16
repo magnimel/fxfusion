@@ -482,6 +482,7 @@ def match_layernorm(
         else torch.ones(
             normalized_shape,
             dtype=torch.float32,
+            device=weight.device,
         )
     )
 
@@ -532,6 +533,7 @@ def match_add_layernorm(
         else torch.ones(
             normalized_shape,
             dtype=torch.float32,
+            device=ctx.device,
         )
     )
 
