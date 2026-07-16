@@ -35,7 +35,7 @@ void mul(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
     switch (mul_mode) {
         case 0: {
             const auto& y = reg[input_ids[1]];
-            TORCH_CHECK(y.numel() == N, "mul: tensor-tensor shape mismatch, x.numel()=", N, " y.numel()=", y.numel());
+            TORCH_CHECK(y.numel() == N, "mul[cuda]: tensor-tensor shape mismatch, x.numel()=", N, " y.numel()=", y.numel());
             const float* y_ptr = y.data_ptr<float>();
             mul_tensor_tensor_kernel<<<grid, block>>>(x_ptr, y_ptr, out_ptr, N);
             break;
@@ -48,7 +48,7 @@ void mul(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
             break;
         }
         default:
-            throw std::runtime_error("mul: unknown mul_mode " + std::to_string(mul_mode));
+            throw std::runtime_error("mul[cuda]: unknown mul_mode " + std::to_string(mul_mode));
     }
 }
 
