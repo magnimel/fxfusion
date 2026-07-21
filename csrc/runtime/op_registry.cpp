@@ -14,55 +14,55 @@
 namespace fxfusion {
 
 static KernelSet select_kernels(const torch::Device& device) {
+    KernelSet k{};
+
 #ifdef USE_CUDA
     if (device.is_cuda()) {
-        return {
-            kernels::cuda::conv2d,
-            kernels::cuda::conv2d_relu,
-            kernels::cuda::linear,
-            kernels::cuda::linear_relu,
-            kernels::cuda::add,
-            kernels::cuda::add_relu,
-            kernels::cuda::relu,
-            kernels::cuda::mul,
-            kernels::cuda::max_pool2d,
-            kernels::cuda::avg_pool2d,
-            kernels::cuda::adaptive_avg_pool2d,
-            kernels::cuda::transpose,
-            kernels::cuda::size,
-            kernels::cuda::narrow,
-            kernels::cuda::embedding,
-            kernels::cuda::layer_norm,
-            kernels::cuda::add_layer_norm,
-            kernels::cuda::mha_flash,
-            kernels::cuda::feedforward,
-        };
+        k.conv2d              = kernels::cuda::conv2d;
+        k.conv2d_relu          = kernels::cuda::conv2d_relu;
+        k.linear               = kernels::cuda::linear;
+        k.linear_relu          = kernels::cuda::linear_relu;
+        k.add                  = kernels::cuda::add;
+        k.add_relu             = kernels::cuda::add_relu;
+        k.relu                 = kernels::cuda::relu;
+        k.mul                  = kernels::cuda::mul;
+        k.max_pool2d           = kernels::cuda::max_pool2d;
+        k.avg_pool2d           = kernels::cuda::avg_pool2d;
+        k.adaptive_avg_pool2d  = kernels::cuda::adaptive_avg_pool2d;
+        k.transpose            = kernels::cuda::transpose;
+        k.size                 = kernels::cuda::size;
+        k.narrow               = kernels::cuda::narrow;
+        k.embedding            = kernels::cuda::embedding;
+        k.layer_norm           = kernels::cuda::layer_norm;
+        k.add_layer_norm       = kernels::cuda::add_layer_norm;
+        k.mha                  = kernels::cuda::mha_flash;
+        k.feedforward          = kernels::cuda::feedforward;
+        return k;
     }
 #else
     TORCH_CHECK(!device.is_cuda(), "FXFusion was built without CUDA support");
 #endif
 
-    return {
-        kernels::cpu::conv2d,
-        kernels::cpu::conv2d_relu,
-        kernels::cpu::linear,
-        kernels::cpu::linear_relu,
-        kernels::cpu::add,
-        kernels::cpu::add_relu,
-        kernels::cpu::relu,
-        kernels::cpu::mul,
-        kernels::cpu::max_pool2d,
-        kernels::cpu::avg_pool2d,
-        kernels::cpu::adaptive_avg_pool2d,
-        kernels::cpu::transpose,
-        kernels::cpu::size,
-        kernels::cpu::narrow,
-        kernels::cpu::embedding,
-        kernels::cpu::layer_norm,
-        kernels::cpu::add_layer_norm,
-        kernels::cpu::mha_flash,
-        kernels::cpu::feedforward,
-    };
+    k.conv2d               = kernels::cpu::conv2d;
+    k.conv2d_relu          = kernels::cpu::conv2d_relu;
+    k.linear               = kernels::cpu::linear;
+    k.linear_relu          = kernels::cpu::linear_relu;
+    k.add                  = kernels::cpu::add;
+    k.add_relu             = kernels::cpu::add_relu;
+    k.relu                 = kernels::cpu::relu;
+    k.mul                  = kernels::cpu::mul;
+    k.max_pool2d           = kernels::cpu::max_pool2d;
+    k.avg_pool2d           = kernels::cpu::avg_pool2d;
+    k.adaptive_avg_pool2d  = kernels::cpu::adaptive_avg_pool2d;
+    k.transpose            = kernels::cpu::transpose;
+    k.size                 = kernels::cpu::size;
+    k.narrow               = kernels::cpu::narrow;
+    k.embedding            = kernels::cpu::embedding;
+    k.layer_norm           = kernels::cpu::layer_norm;
+    k.add_layer_norm       = kernels::cpu::add_layer_norm;
+    k.mha                  = kernels::cpu::mha;
+    k.feedforward          = kernels::cpu::feedforward;
+    return k;
 }
 
 OpRegistry::OpRegistry(const torch::Device& device) {
@@ -88,7 +88,7 @@ OpRegistry::OpRegistry(const torch::Device& device) {
     register_op(OpCode_Embedding,         k.embedding);
     register_op(OpCode_LayerNorm,         k.layer_norm);
     register_op(OpCode_AddLayerNorm,      k.add_layer_norm);
-    register_op(OpCode_MHA,               k.mha_flash);
+    register_op(OpCode_MHA,               k.mha);
     register_op(OpCode_FeedForward,       k.feedforward);
 }
 
