@@ -2,13 +2,11 @@
 
 namespace fxfusion::kernels::cuda {
 
-#define TILE_SIZE 32
-
 // Naive (non-tiled) reference implementation — NOT used in mha()'s dispatch,
 // kept for comparison/debugging only.
 //
 // Input:  qkv    {batch, seq, qkv_dim} where qkv_dim = 3*d_model
-//         mask   {batch, seq, seq} bool
+//         mask   {batch, 1, seq, seq} bool
 // Output: scores {batch, num_heads, seq, seq}
 __global__ void scores_kernel_ref(const float* qkv, const bool* mask, float* scores,
                                int64_t batch, int64_t seq, int64_t num_heads,
@@ -27,7 +25,7 @@ __global__ void scores_kernel_ref(const float* qkv, const bool* mask, float* sco
     if (i >= seq || j >= seq) return;
 
     float sum = 0.0f;
-    for (int d = 0; d < head_dim; d++) { // was `k++` — undefined variable, fixed to `d++`
+    for (int d = 0; d < head_dim; d++) { 
         int64_t q_offset = (b * seq * qkv_dim) + (i * qkv_dim) + h * head_dim + d;
         int64_t k_offset = (b * seq * qkv_dim) + (j * qkv_dim) + d_model + h * head_dim + d;   
         sum += qkv[q_offset] * qkv[k_offset];
@@ -38,10 +36,9 @@ __global__ void scores_kernel_ref(const float* qkv, const bool* mask, float* sco
     scores[out_idx] = keep ? (sum / scale_divisor) : -INFINITY;
 }
 
-// Tiled scores kernel — used in mha()'s dispatch.
-//
+
 // Input:  qkv    {batch, seq, qkv_dim} where qkv_dim = 3*d_model
-//         mask   {batch, seq, seq} bool
+//         mask   {batch, 1, seq, seq} bool
 // Output: scores {batch, num_heads, seq, seq}
 __global__ void scores_kernel(const float* qkv, const bool* mask, float* scores,
                                int64_t batch, int64_t seq, int64_t num_heads,
@@ -49,14 +46,14 @@ __global__ void scores_kernel(const float* qkv, const bool* mask, float* scores,
                                float scale_divisor) 
 {
     // qkv: (b * seq * qkv_dim) + (s * qkv_dim) + {0,1,2} * d_model + h * head_dim + d 
-    __shared__ float qds[TILE_SIZE][TILE_SIZE];
-    __shared__ float kds[TILE_SIZE][TILE_SIZE];
+    __shared__ float qds[LINEAR_TILE_SIZE][LINEAR_TILE_SIZE];
+    __shared__ float kds[LINEAR_TILE_SIZE][LINEAR_TILE_SIZE];
 
     int64_t bx = blockIdx.x;  int64_t by = blockIdx.y;
     int64_t tx = threadIdx.x; int64_t ty = threadIdx.y;
 
-    int64_t i = by * TILE_SIZE + ty;
-    int64_t j = bx * TILE_SIZE + tx;
+    int64_t i = by * LINEAR_TILE_SIZE + ty;
+    int64_t j = bx * LINEAR_TILE_SIZE + tx;
 
     int64_t bh = blockIdx.z;
     int64_t b = bh / num_heads;
@@ -64,11 +61,11 @@ __global__ void scores_kernel(const float* qkv, const bool* mask, float* scores,
 
     float sum = 0.0f;
 
-    int64_t num_tiles = (head_dim + TILE_SIZE - 1) / TILE_SIZE;
+    int64_t num_tiles = (head_dim + LINEAR_TILE_SIZE - 1) / LINEAR_TILE_SIZE;
 
     for (int64_t k = 0; k < num_tiles; k++) {
-        int64_t q_col = k * TILE_SIZE + tx;
-        int64_t k_col = k * TILE_SIZE + ty;
+        int64_t q_col = k * LINEAR_TILE_SIZE + tx;
+        int64_t k_col = k * LINEAR_TILE_SIZE + ty;
 
         int64_t q_offset = (b * seq * qkv_dim) + (i * qkv_dim) + h * head_dim + q_col;
         int64_t k_offset = (b * seq * qkv_dim) + (j * qkv_dim) + d_model + h * head_dim + k_col;  
@@ -77,7 +74,7 @@ __global__ void scores_kernel(const float* qkv, const bool* mask, float* scores,
         kds[ty][tx] = (j < seq && k_col < head_dim) ? qkv[k_offset] : 0.0f;
 
         __syncthreads();
-        for (int64_t kT = 0; kT < TILE_SIZE; kT++) {
+        for (int64_t kT = 0; kT < LINEAR_TILE_SIZE; kT++) {
             sum += qds[ty][kT] * kds[kT][tx];
         }
         __syncthreads();
@@ -143,13 +140,64 @@ __global__ void softmax_kernel(float* scores, int64_t batch, int64_t num_heads, 
     }
 }
 
+
+__global__ void online_softmax_kernel(float* scores, int64_t batch, int64_t num_heads, int64_t seq) {
+    extern __shared__ float smem[];
+    float* mT = smem;
+    float* dT = smem + blockDim.x;
+
+    int64_t row = blockIdx.x;
+
+    int64_t b = row / (num_heads * seq);
+    int64_t h = (row / seq) % num_heads;
+    int64_t s = row % seq;
+
+    int64_t offset = b * num_heads * seq * seq + h * seq * seq + s * seq;
+    float* scores_row = scores + offset;
+
+    int64_t tid = threadIdx.x;
+
+    float local_max = -INFINITY;
+    float local_dnr = 0.0f;
+    for (int64_t i = tid; i < seq; i += blockDim.x) {
+        float x = scores_row[i];
+        float new_local_max = fmaxf(local_max, x);
+        local_dnr = local_dnr * expf(local_max - new_local_max) + expf(x - new_local_max);
+        local_max = new_local_max;
+    }
+    mT[tid] = local_max;
+    dT[tid] = local_dnr;
+    __syncthreads();
+
+    for (int64_t stride = blockDim.x / 2; stride > 0; stride /= 2) {
+        if (tid < stride) {
+            float m1 = mT[tid];
+            float d1 = dT[tid];
+            float m2 = mT[tid + stride];
+            float d2 = dT[tid + stride];
+            
+            float m_new = fmaxf(m1, m2);
+            
+            dT[tid] = d1 * expf(m1 - m_new) + d2 * expf(m2 - m_new);
+            mT[tid] = m_new;
+        }
+        __syncthreads();
+    }
+
+    float row_max = mT[0];
+    float denom = dT[0];
+
+    for (int64_t i = tid; i < seq; i += blockDim.x) {
+        scores_row[i] = expf(scores_row[i] - row_max) / denom;
+    }
+}
+
 // Naive (non-tiled) reference implementation — NOT used in mha()'s dispatch,
 // kept for comparison/debugging only.
 //
 // Input:  qkv  {batch, seq, qkv_dim} (V slice used, offset by 2*d_model)
 //         attn {batch, num_heads, seq, seq} (post-softmax scores)
 // Output: ctx  {batch, seq, num_heads, head_dim} == {batch, seq, d_model}
-//              (heads concatenated along the feature axis)
 __global__ void ctx_kernel_ref(const float* qkv, const float* attn, float* ctx,
                                 int64_t batch, int64_t seq, int64_t num_heads,
                                 int64_t head_dim, int64_t d_model, int64_t qkv_dim)
@@ -183,25 +231,25 @@ __global__ void ctx_kernel(const float* qkv, float* attn, float* ctx,
                             int64_t batch, int64_t seq, int64_t num_heads,
                             int64_t head_dim, int64_t d_model, int64_t qkv_dim)
 {
-    __shared__ float ads[TILE_SIZE][TILE_SIZE];
-    __shared__ float vds[TILE_SIZE][TILE_SIZE];
+    __shared__ float ads[LINEAR_TILE_SIZE][LINEAR_TILE_SIZE];
+    __shared__ float vds[LINEAR_TILE_SIZE][LINEAR_TILE_SIZE];
 
     int64_t bx = blockIdx.x;  int64_t by = blockIdx.y;
     int64_t tx = threadIdx.x; int64_t ty = threadIdx.y;
 
-    int64_t i = by * TILE_SIZE + ty;
-    int64_t j = bx * TILE_SIZE + tx;
+    int64_t i = by * LINEAR_TILE_SIZE + ty;
+    int64_t j = bx * LINEAR_TILE_SIZE + tx;
 
     int64_t bh = blockIdx.z;
     int64_t b = bh / num_heads;
     int64_t h = bh % num_heads;
 
     float sum = 0.0f;
-    int64_t num_tiles = (seq + TILE_SIZE - 1) / TILE_SIZE;
+    int64_t num_tiles = (seq + LINEAR_TILE_SIZE - 1) / LINEAR_TILE_SIZE;
 
     for (int64_t k = 0; k < num_tiles; k++) {
-        int64_t a_col = k * TILE_SIZE + tx;
-        int64_t v_col = k * TILE_SIZE + ty;
+        int64_t a_col = k * LINEAR_TILE_SIZE + tx;
+        int64_t v_col = k * LINEAR_TILE_SIZE + ty;
 
         int64_t a_offset = (b * num_heads * seq * seq) + (h * seq * seq) + i * seq + a_col;
         int64_t v_offset = (b * seq * qkv_dim) + (v_col * qkv_dim) + 2 * d_model + h * head_dim + j;
@@ -210,7 +258,7 @@ __global__ void ctx_kernel(const float* qkv, float* attn, float* ctx,
         vds[ty][tx] = (j < head_dim && v_col < seq) ? qkv[v_offset] : 0.0f;
 
         __syncthreads();
-        for (int64_t kT = 0; kT < TILE_SIZE; kT++) {
+        for (int64_t kT = 0; kT < LINEAR_TILE_SIZE; kT++) {
             sum += ads[ty][kT] * vds[kT][tx];
         }
         __syncthreads();
@@ -223,7 +271,9 @@ __global__ void ctx_kernel(const float* qkv, float* attn, float* ctx,
 }
 
 
-void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
+
+
+void mha_naive(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
     const auto* cache = static_cast<const MHACache*>(cache_base);
 
     const auto& x               = reg[input_ids[0]];
@@ -259,14 +309,14 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
         int64_t K = d_model;
         int64_t M = batch * seq;
         int64_t N = qkv_dim;
-        dim3 block(TILE_SIZE, TILE_SIZE);
+        dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
         dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
         linear_kernel<<<grid, block>>>(x_ptr, qkv_w_ptr, qkv_b_ptr, qkv, M, N, K);
     }
 
     // --- Scores ---
     {
-        dim3 block(TILE_SIZE, TILE_SIZE);
+        dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
         dim3 grid((seq + block.x - 1) / block.x, (seq + block.y - 1) / block.y, batch * num_heads);
         scores_kernel<<<grid, block>>>(qkv, mask_ptr, scores, batch, seq, num_heads, head_dim, d_model, qkv_dim, scale_divisor);
     }
@@ -281,7 +331,7 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
 
     // --- Ctx ---
     {
-        dim3 block(TILE_SIZE, TILE_SIZE);
+        dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
         dim3 grid((head_dim + block.x - 1) / block.x, (seq + block.y - 1) / block.y, batch * num_heads);
         ctx_kernel<<<grid, block>>>(qkv, scores, ctx, batch, seq, num_heads, head_dim, d_model, qkv_dim);
     }
@@ -291,7 +341,7 @@ void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
         int64_t K = d_model;
         int64_t M = batch * seq;
         int64_t N = d_model;
-        dim3 block(TILE_SIZE, TILE_SIZE);
+        dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
         dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
         linear_kernel<<<grid, block>>>(ctx, out_w_ptr, out_b_ptr, out_ptr, M, N, K);
     }
