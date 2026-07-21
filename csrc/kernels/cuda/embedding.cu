@@ -2,7 +2,13 @@
 
 namespace fxfusion::kernels::cuda {
 
-__global__ void embedding_kernel(const int64_t* idx, const float* w, float* out, int64_t N, int64_t vocab_size, int64_t d_model) {
+__global__ void embedding_kernel(
+    const int64_t* __restrict__ idx, 
+    const float* __restrict__ w, 
+    float* __restrict__ out, 
+    int64_t N, int64_t vocab_size, 
+    int64_t d_model
+) {
 
     int64_t k = blockIdx.x;
     int64_t id = idx[k];

@@ -8,6 +8,9 @@
 
 namespace fxfusion::kernels::cuda {
 
+#define LINEAR_TILE_SIZE 32
+#define FLASH_BLOCK_SIZE 32
+
 void conv2d              (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void conv2d_relu         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void linear              (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
@@ -25,9 +28,9 @@ void narrow              (TensorRegistry&, const TensorIds&, const TensorIds&, c
 void embedding           (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void layer_norm          (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void add_layer_norm      (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
-void mha                 (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
+void mha_naive           (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
+void mha_flash           (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void feedforward         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
-
 
 __global__ void linear_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t P, int64_t K);
 __global__ void linear_relu_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t N, int64_t K);

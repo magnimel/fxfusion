@@ -2,7 +2,14 @@
 
 namespace fxfusion::kernels::cuda {
 
-__global__ void layer_norm_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t N, float eps) {
+__global__ void layer_norm_kernel(
+    const float* __restrict__ x, 
+    const float* __restrict__ w, 
+    const float* __restrict__ b, 
+    float* __restrict__ out, 
+    int64_t M, int64_t N, 
+    float eps
+) {
 
     extern __shared__ float tmp[];
 
