@@ -34,7 +34,7 @@ static KernelSet select_kernels(const torch::Device& device) {
             kernels::cuda::embedding,
             kernels::cuda::layer_norm,
             kernels::cuda::add_layer_norm,
-            kernels::cuda::mha,
+            kernels::cuda::mha_flash,
             kernels::cuda::feedforward,
         };
     }
@@ -60,7 +60,7 @@ static KernelSet select_kernels(const torch::Device& device) {
         kernels::cpu::embedding,
         kernels::cpu::layer_norm,
         kernels::cpu::add_layer_norm,
-        kernels::cpu::mha,
+        kernels::cpu::mha_flash,
         kernels::cpu::feedforward,
     };
 }
@@ -88,7 +88,7 @@ OpRegistry::OpRegistry(const torch::Device& device) {
     register_op(OpCode_Embedding,         k.embedding);
     register_op(OpCode_LayerNorm,         k.layer_norm);
     register_op(OpCode_AddLayerNorm,      k.add_layer_norm);
-    register_op(OpCode_MHA,               k.mha);
+    register_op(OpCode_MHA,               k.mha_flash);
     register_op(OpCode_FeedForward,       k.feedforward);
 }
 
