@@ -8,9 +8,11 @@ The project explores compiler and runtime techniques used in modern inference sy
 
 Detailed benchmark results are available in:
 
-* [Benchmark Report](./benchmarks/README.md)
+* [Benchmark Report (CPU)](./benchmarks/README_CPU.md)
 
-Highlights (CPU Backend):
+* [Benchmark Report (CUDA)](./benchmarks/README_CUDA.md)
+
+### CPU Backend
 
 * Up to **2.16× faster** than PyTorch eager execution on dispatch-heavy inference workloads
 * Up to **1.67× faster** than `torch.compile` on dispatch-heavy MLP benchmarks
@@ -19,6 +21,13 @@ Highlights (CPU Backend):
 * Outperforms both PyTorch eager execution and `torch.compile` on balanced MLP workloads
 * Performance comparable to or exceeding `torch.compile` on ResNet-18 CPU inference
 * Performance parity with PyTorch eager execution on ResNet-50 CPU inference
+
+### CUDA Backend
+
+* Up to **8.3× faster** than PyTorch eager and **2.3× faster** than `torch.compile` on dispatch-heavy GPT forward passes (many small kernel launches, where compiled-graph dispatch overhead dominates)
+* Up to **4.9× faster** than PyTorch eager and **2.5× faster** than `torch.compile` on dispatch-heavy autoregressive GPT decoding
+* Up to **2.6× faster** than PyTorch eager on compute-heavy GPT forward passes (larger `d_model`, batch); roughly at parity with `torch.compile`
+* On compute-heavy decode workloads, currently at parity with PyTorch eager and behind `torch.compile` (~2×) — hand-written tiled GEMM kernels not yet competitive with vendor-optimized libraries at large matmul sizes; see cuBLASLt integration under Future Work
 
 ## Current Status
 
@@ -38,7 +47,9 @@ Highlights (CPU Backend):
 * Arena-backed tensor registry with alias binding
 * Transformer runtime support including MHA, FeedForward, LayerNorm, Embedding, and autoregressive GPT decoding
 * CPU and CUDA execution backends
-* End-to-end correctness validated against PyTorch on ResNet18, ResNet50, MLP, and Transformer workloads
+* End-to-end correctness validated against PyTorch:
+  * **CPU** — ResNet18, ResNet50, MLP, and Transformer/GPT workloads
+  * **CUDA** — MLP and Transformer/GPT workloads (Conv2D, Linear, LayerNorm, Add/Mul, Transpose, Narrow, Embedding, FeedForward, Multi-Head Attention); pooling (MaxPool2D/AvgPool2D/AdaptiveAvgPool2D) CUDA kernels not yet implemented
 
 ## Transformer Support
 
@@ -54,7 +65,7 @@ Implemented from scratch in PyTorch:
 * Static Mask Generation
 * Autoregressive Decoding
 
-Validated through FXFusion execution against PyTorch eager execution.
+Validated through FXFusion execution against PyTorch eager execution on both CPU and CUDA backends.
 
 ### CPU Backend
 
@@ -65,22 +76,38 @@ Validated through FXFusion execution against PyTorch eager execution.
 ### CUDA Backend
 
 * Backend dispatch infrastructure implemented
-* Custom kernel implementations in progress
-* cuBLAS and cuBLASLt integration in progress
+* Hand-written, shared-memory-tiled CUDA kernels implemented and validated for: Conv2D, Linear, Linear+ReLU, Add, Add+ReLU, Mul, Transpose, Narrow, Embedding, LayerNorm, Add+LayerNorm, and FeedForward
+* Multi-Head Attention implemented as a single-kernel, FlashAttention-style fused kernel (online softmax, no materialized attention matrix) — the sole CUDA MHA path; the earlier five-kernel (scores/softmax/context) pipeline has been retired to a reference-only file
+* Pooling kernels (MaxPool2D, AvgPool2D, AdaptiveAvgPool2D) not yet implemented — CNN models relying on pooling (e.g. ResNet) remain CPU-only until these land
+* cuBLAS and cuBLASLt integration planned (current GEMM kernels are hand-written, not vendor-library-backed)
 
 ## Supported Operators
 
 ### CNN
 
+*(CPU and CUDA)*
+
 * Conv2D
-* Conv2D + ReLU
-* MaxPool2D
-* AvgPool2D
-* AdaptiveAvgPool2D
+* Conv2D + ReLU 
+
+*(CPU)*
+
+* MaxPool2D 
+* AvgPool2D 
+* AdaptiveAvgPool2D 
+
+### Elementwise / Shared
+
+*(CPU and CUDA)*
+
 * Add
 * Add + ReLU
+* Mul
+* Relu
 
 ### Transformer
+
+*(CPU and CUDA)*
 
 * Embedding
 * Linear
@@ -89,7 +116,6 @@ Validated through FXFusion execution against PyTorch eager execution.
 * Add + LayerNorm
 * Multi-Head Attention (MHA)
 * FeedForward
-* Mul
 * Transpose
 * Narrow
 * Size
@@ -158,7 +184,7 @@ pytest py/tests/ -v
 make test
 ```
 
-* `test_ops_cpu.py` — end-to-end correctness on CPU for all operators and models
+* `test_ops.py` — end-to-end correctness for all operators and models, parametrized across CPU and CUDA (when available)
 * `test_fusion.py` — fusion pattern matching and correctness
 * `test_memory_plan.py` — arena sizing, offset alignment, buffer reuse, alias tracking, and liveness analysis
 * `test_shape_prop.py` — output shape and dtype propagation
@@ -167,10 +193,9 @@ make test
 
 ### CUDA Backend
 
-* cuBLASLt GEMM with fused bias + ReLU epilogues
-* Custom Conv2D kernels with shared-memory tiling
-* Occupancy-aware launch configuration
-* Fused Transformer kernels
+* Custom pooling kernels (MaxPool2D, AvgPool2D, AdaptiveAvgPool2D) with shared-memory tiling
+* cuBLASLt GEMM with fused bias + ReLU epilogues for large matmuls
+* Occupancy-aware launch configuration, profiled with Nsight Compute
 
 ### Models
 
