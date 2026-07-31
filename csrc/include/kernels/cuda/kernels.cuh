@@ -9,7 +9,8 @@
 namespace fxfusion::kernels::cuda {
 
 #define LINEAR_TILE_SIZE 32
-#define FLASH_BLOCK_SIZE 32
+#define FLASH_BLOCK_SIZE 16
+#define CONV2D_TILE_DIM  16
 
 void conv2d              (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void conv2d_relu         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
