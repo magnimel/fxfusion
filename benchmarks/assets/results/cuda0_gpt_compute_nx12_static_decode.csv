@@ -1,0 +1,19 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,PyTorch,41.9477,1.03
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,torch.compile,21.3667,0.53
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,FXFusion,40.5387,1.00
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,PyTorch,42.1319,1.04
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,torch.compile,21.5080,0.53
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,FXFusion,40.5699,1.00
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,PyTorch,44.7211,1.10
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,torch.compile,20.2653,0.50
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,FXFusion,40.6051,1.00
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,PyTorch,43.1625,1.06
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,torch.compile,20.5922,0.51
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,FXFusion,40.5551,1.00
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,PyTorch,43.2322,1.06
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,torch.compile,20.8248,0.51
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,FXFusion,40.7785,1.00
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,PyTorch,46.7796,1.15
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,torch.compile,20.6649,0.51
+"GPT compute-heavy static decode, full recompute (Nx=12, d_model=512, B=2, 5→10)",cuda:0,FXFusion,40.5259,1.00

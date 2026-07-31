@@ -1,0 +1,19 @@
+workload,device,backend,latency_ms,fxfusion_speedup
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,21.3447,2.61
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,5.3639,0.65
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.1924,1.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,17.9294,2.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,9.1859,1.02
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.9625,1.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,21.5700,2.60
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,7.8975,0.95
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.2804,1.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,13.6506,1.67
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,5.5272,0.68
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.1739,1.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,13.4961,1.61
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,5.2466,0.63
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.3762,1.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,13.7756,1.57
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,9.1905,1.05
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.7695,1.00

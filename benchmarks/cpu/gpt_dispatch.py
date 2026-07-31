@@ -12,11 +12,11 @@ from utils import make_gpt, run_gpt_forward, run_gpt_decode
 
 DEVICE = "cpu"
 
-FORWARD_WARMUP = 20
+FORWARD_WARMUP = 30
 FORWARD_ITERS = 300
 
-DECODE_WARMUP = 5
-DECODE_ITERS = 50
+DECODE_WARMUP = 30
+DECODE_ITERS = 300
 
 
 def main():
