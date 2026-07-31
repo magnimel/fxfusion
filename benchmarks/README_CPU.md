@@ -1,66 +1,61 @@
-# FXFusion Benchmarks
+# FXFusion CPU Benchmarks
 
-This document contains benchmark results comparing FXFusion against PyTorch eager execution and `torch.compile`.
+This document contains benchmark results comparing FXFusion against PyTorch eager execution and `torch.compile` on the CPU acceleration backend.
 
 ## Benchmark Configuration
 
 ### Methodology
-
 - 100 warmup iterations before timing
 - 5000 measured iterations per benchmark
 - CPU timings collected using `time.perf_counter()`
-- Reported latency is the average latency per inference
+- Reported latency is the average latency per inference pass
 - All models executed in inference mode with gradient computation disabled
 
-### CPU Backend
-
-- PyTorch: Eager execution
-- torch.compile: TorchInductor default configuration
-- FXFusion: RuntimeGraph execution engine with operator fusion, static memory planning, arena-backed tensor storage, and function-pointer dispatch
+### CPU Hardware Environment
+- **Device Targeted:** Apple MacBook Pro M1
+- **PyTorch:** Eager execution loop
+- **torch.compile:** TorchInductor default CPU configuration
+- **FXFusion:** RuntimeGraph execution engine utilizing operator fusion, static memory planning, arena-backed tensor storage, and function-pointer dispatch.
 
 ---
 
-# CPU Benchmarks
+# CPU Performance Benchmarks
 
-## Dispatch-Heavy MLP (depth=32, width=64, batch=1)
+## Dispatch-Heavy MLP (Depth=32, Width=64, Batch=1)
 
 ![Dispatch 32x64](./assets/keep/cpu_mlp_dispatch_32x64.png)
 
 ### Result
-
 - 2.16× lower latency than PyTorch eager execution
 - 1.58× lower latency than torch.compile
 
 ---
 
-## Dispatch-Heavy MLP (depth=32, width=128, batch=1)
+## Dispatch-Heavy MLP (Depth=32, Width=128, Batch=1)
 
 ![Dispatch 32x128](./assets/keep/cpu_mlp_dispatch_32x128.png)
 
 ### Result
-
 - 2.02× lower latency than PyTorch eager execution
 - 1.67× lower latency than torch.compile
 
 ---
 
-## Balanced MLP (depth=16, width=256, batch=4)
+## Balanced MLP (Depth=16, Width=256, Batch=4)
 
 ![Balanced 16x256](./assets/keep/cpu_mlp_balanced_16x256.png)
 
 ### Result
-
-FXFusion outperforms both PyTorch eager execution and torch.compile.
+- Outperformance achieved relative to both PyTorch eager execution and torch.compile
 
 ---
 
-## Compute-Bound MLP (depth=4, width=4096, batch=64)
+## Compute-Bound MLP (Depth=4, Width=4096, Batch=64)
 
 ![Compute 4x4096](./assets/keep/cpu_mlp_compute_4x4096.png)
 
 ### Result
-
-Performance converges toward the underlying BLAS implementation used by LibTorch.
+- Performance convergence toward the underlying BLAS implementation utilized by LibTorch
 
 ---
 
@@ -69,8 +64,7 @@ Performance converges toward the underlying BLAS implementation used by LibTorch
 ![ResNet18](./assets/keep/cpu_resnet18.png)
 
 ### Result
-
-FXFusion slightly outperforms both PyTorch eager execution and torch.compile.
+- Slight outperformance achieved relative to both PyTorch eager execution and torch.compile
 
 ---
 
@@ -79,59 +73,24 @@ FXFusion slightly outperforms both PyTorch eager execution and torch.compile.
 ![ResNet50](./assets/keep/cpu_resnet50.png)
 
 ### Result
-
-FXFusion achieves performance parity with PyTorch eager execution on a production-scale CNN.
-
----
-
-# CUDA Benchmarks
-
-CUDA benchmarks will be added as custom kernels are implemented.
-
-## Planned Benchmarks
-
-### Dispatch-Heavy MLP
-
-- Linear + ReLU fusion
-- Runtime dispatch overhead analysis
-- Comparison against PyTorch eager and torch.compile
-
-### Compute-Bound MLP
-
-- cuBLAS GEMM
-- cuBLASLt fused bias + ReLU epilogues
-- Mixed precision (FP16/BF16)
-
-### CNN Models
-
-- ResNet-18
-- ResNet-50
-
-### Future Models
-
-- Vision Transformers
-- Transformer encoder blocks
+- Performance parity achieved with PyTorch eager execution on a production-scale CNN
 
 ---
 
-# Interpretation
+# Core Architectural Interpretation
 
 ### Dispatch-Heavy Workloads
-
-FXFusion consistently outperforms both PyTorch eager execution and torch.compile on deep, small-batch MLPs where runtime and operator dispatch overhead dominate execution time.
+FXFusion consistently outperforms both PyTorch eager execution and torch.compile on deep, small-batch MLPs where runtime and operator dispatch overhead dominate execution bounds.
 
 ### Compute-Bound Workloads
-
-As workloads become dominated by large matrix multiplications and convolution operations, performance naturally converges toward the underlying LibTorch and BLAS implementation used by the CPU backend.
+As workloads become dominated by large matrix multiplications and convolution operations, performance naturally converges toward the underlying LibTorch and BLAS implementation utilized by the CPU backend.
 
 ### CNN Workloads
-
-FXFusion achieves near-parity with PyTorch eager execution on ResNet-18 and ResNet-50 while executing through the custom compiler pipeline, memory planner, RuntimeGraph execution engine, and backend dispatch infrastructure.
+Near-parity is achieved relative to PyTorch eager execution on ResNet-18 and ResNet-50 while executing through the custom compiler pipeline, memory planner, RuntimeGraph execution engine, and backend dispatch infrastructure.
 
 ---
 
-# Raw Benchmark Files
-
-Generated charts and benchmark results:
-
-- `assets/keep/`
+# Raw Evaluation Data
+Detailed benchmark execution tracking values are recorded across the following artifacts:
+- `benchmarks/assets/results/cpu_*.csv`
+- `benchmarks/assets/imgs/cpu_*.png`

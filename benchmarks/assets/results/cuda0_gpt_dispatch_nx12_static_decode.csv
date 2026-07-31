@@ -8,12 +8,12 @@ workload,device,backend,latency_ms,fxfusion_speedup
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,PyTorch,251.3266,4.61
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,torch.compile,108.6132,1.99
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,FXFusion,54.4990,1.00
-"GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,PyTorch,265.2308,4.92
-"GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,torch.compile,126.3322,2.34
-"GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,FXFusion,53.9483,1.00
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,PyTorch,248.5556,4.60
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,torch.compile,110.2956,2.04
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,FXFusion,54.0483,1.00
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,PyTorch,256.5200,4.77
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,torch.compile,116.5371,2.17
 "GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,FXFusion,53.8094,1.00
+"GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,PyTorch,265.2308,4.92
+"GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,torch.compile,126.3322,2.34
+"GPT dispatch-heavy static decode, full recompute (Nx=12, d_model=128, B=1, 1→32)",cuda:0,FXFusion,53.9483,1.00

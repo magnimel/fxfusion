@@ -1,7 +1,4 @@
 workload,device,backend,latency_ms,fxfusion_speedup
-"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,21.3447,2.61
-"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,5.3639,0.65
-"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.1924,1.00
 "GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,17.9294,2.00
 "GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,9.1859,1.02
 "GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.9625,1.00
@@ -17,3 +14,6 @@ workload,device,backend,latency_ms,fxfusion_speedup
 "GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,13.7756,1.57
 "GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,9.1905,1.05
 "GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.7695,1.00
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,PyTorch,21.3447,2.61
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,torch.compile,5.3639,0.65
+"GPT compute-heavy forward static (Nx=12, d_model=512, B=2, T=10)",cuda:0,FXFusion,8.1924,1.00
