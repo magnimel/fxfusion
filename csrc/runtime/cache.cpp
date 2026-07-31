@@ -18,6 +18,7 @@ TransposeCache::TransposeCache(TensorRegistry& reg, const TensorIds& input_ids, 
     auto in_strides  = x.strides();
     auto out_shape   = out.sizes();
     auto out_strides = out.strides();
+
     for (int64_t d = 0; d < data.dims; d++) {
         data.in_stride[d]  = in_strides[d];
         data.out_shape[d]  = out_shape[d];
@@ -62,11 +63,9 @@ MHACache::MHACache(TensorRegistry& reg, const TensorIds& input_ids, const Tensor
     const int64_t seq   = x.size(1);
 
     qkv_buf    = torch::empty({batch, seq, qkv_dim}, x.options());
-    scores_buf = torch::empty({batch, num_heads, seq, seq}, x.options());
     ctx_buf    = torch::empty({batch, seq, d_model}, x.options());
 
     data.qkv    = qkv_buf.data_ptr<float>();
-    data.scores = scores_buf.data_ptr<float>();
     data.ctx    = ctx_buf.data_ptr<float>();
     data.batch  = batch;
     data.seq    = seq;

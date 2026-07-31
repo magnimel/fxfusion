@@ -2,6 +2,9 @@
 
 namespace fxfusion::kernels::cuda {
 
+// Input:  qkv    {batch, seq, qkv_dim} where qkv_dim = 3*d_model
+//         mask   {batch, 1, seq, seq} bool
+// Output: ctx    {batch, seq, num_heads, head_dim} == {batch, seq, d_model}
 __global__ void flash_attention_kernel(
     const float* __restrict__ qkv,
     const bool* __restrict__ mask,
@@ -71,14 +74,14 @@ __global__ void flash_attention_kernel(
         }
 
         float new_max = fmaxf(running_max, local_max);
-        bool nothing_seen_yet = (new_max == -INFINITY);
+        bool has_valid_scores = (new_max == -INFINITY);
 
-        float scale = nothing_seen_yet ? 0.0f : expf(running_max - new_max);
+        float scale = has_valid_scores ? 0.0f : expf(running_max - new_max);
         O_acc *= scale;
 
         float local_sum = 0.0f;
         for (int i = 0; i < FLASH_BLOCK_SIZE; i++) {
-            float exp_val = nothing_seen_yet ? 0.0f : expf(S_s[ty][i] - new_max);
+            float exp_val = has_valid_scores ? 0.0f : expf(S_s[ty][i] - new_max);
             P_s[ty][i] = exp_val;   
             local_sum += exp_val;
         }
