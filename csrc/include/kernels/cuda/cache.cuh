@@ -1,5 +1,5 @@
 #pragma once
-#include "cuda_graph_context.cuh"
+#include "graph_cuda_context.cuh"
 #include "runtime_types.hpp"
 #include <torch/torch.h>
 #include <cudnn_frontend.h>
