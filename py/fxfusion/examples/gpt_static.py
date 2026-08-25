@@ -23,9 +23,8 @@ def main():
 
     batch_size = 1
     initial_len = 5
-    max_seq_len = 10
-
-    torch.manual_seed(6)  # fixed seed — reproduces the known-diverging case
+    num_new_tokens = 1
+    max_seq_len = initial_len + num_new_tokens
 
     model = GPT(d_model, h, vocab_size, expansion_factor, dropout, Nx).eval().to(DEVICE)
 
@@ -33,10 +32,11 @@ def main():
     mask_builder = StaticDecoderMaskBuilder(max_seq_len=max_seq_len).to(DEVICE)
 
     static_buffer = make_static_buffer(tokens, max_seq_len=max_seq_len, pad_idx=0)
+    static_mask = mask_builder(static_buffer, current_len=initial_len, pad_idx=0)
 
     engine = Engine(
         model,
-        [static_buffer, mask_builder(static_buffer, current_len=initial_len, pad_idx=0)],
+        [static_buffer, static_mask],
         model_name="gpt",
         device=DEVICE,
         DEBUG=True,
