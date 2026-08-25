@@ -7,101 +7,76 @@
 
 #ifdef USE_CUDA
 #include "kernels.cuh"
+#include "caches.cuh" 
 #endif
 
 #include "kernels.hpp"
 
 namespace fxfusion {
 
-static KernelSet select_kernels(const torch::Device& device) {
-    KernelSet k{};
-
-#ifdef USE_CUDA
-    if (device.is_cuda()) {
-        k.conv2d              = kernels::cuda::conv2d;
-        k.conv2d_relu          = kernels::cuda::conv2d_relu;
-        k.linear               = kernels::cuda::linear;
-        k.linear_relu          = kernels::cuda::linear_relu;
-        k.add                  = kernels::cuda::add;
-        k.add_relu             = kernels::cuda::add_relu;
-        k.relu                 = kernels::cuda::relu;
-        k.mul                  = kernels::cuda::mul;
-        k.max_pool2d           = kernels::cuda::max_pool2d;
-        k.avg_pool2d           = kernels::cuda::avg_pool2d;
-        k.adaptive_avg_pool2d  = kernels::cuda::adaptive_avg_pool2d;
-        k.transpose            = kernels::cuda::transpose;
-        k.size                 = kernels::cuda::size;
-        k.narrow               = kernels::cuda::narrow;
-        k.embedding            = kernels::cuda::embedding;
-        k.layer_norm           = kernels::cuda::layer_norm;
-        k.add_layer_norm       = kernels::cuda::add_layer_norm;
-        k.mha                  = kernels::cuda::mha_flash;
-        k.feedforward          = kernels::cuda::feedforward;
-        return k;
-    }
-#else
-    TORCH_CHECK(!device.is_cuda(), "FXFusion was built without CUDA support");
-#endif
-
-    k.conv2d               = kernels::cpu::conv2d;
-    k.conv2d_relu          = kernels::cpu::conv2d_relu;
-    k.linear               = kernels::cpu::linear;
-    k.linear_relu          = kernels::cpu::linear_relu;
-    k.add                  = kernels::cpu::add;
-    k.add_relu             = kernels::cpu::add_relu;
-    k.relu                 = kernels::cpu::relu;
-    k.mul                  = kernels::cpu::mul;
-    k.max_pool2d           = kernels::cpu::max_pool2d;
-    k.avg_pool2d           = kernels::cpu::avg_pool2d;
-    k.adaptive_avg_pool2d  = kernels::cpu::adaptive_avg_pool2d;
-    k.transpose            = kernels::cpu::transpose;
-    k.size                 = kernels::cpu::size;
-    k.narrow               = kernels::cpu::narrow;
-    k.embedding            = kernels::cpu::embedding;
-    k.layer_norm           = kernels::cpu::layer_norm;
-    k.add_layer_norm       = kernels::cpu::add_layer_norm;
-    k.mha                  = kernels::cpu::mha;
-    k.feedforward          = kernels::cpu::feedforward;
-    return k;
-}
-
 OpRegistry::OpRegistry(const torch::Device& device) {
-    const auto num_ops = fxfusion::OpCode_MAX + 1;
+    const auto num_ops = OpCode_MAX + 1;
     registry_.resize(num_ops);
 
-    const auto k = select_kernels(device);
+    if (device.is_cuda()) {
+#ifdef USE_CUDA
+        register_op(OpCode_Conv2d,            kernels::cuda::conv2d,         kernels::cuda::build_conv2d_cache);
+        register_op(OpCode_Conv2dRelu,        kernels::cuda::conv2d_relu,    kernels::cuda::build_conv2d_relu_cache);
+        register_op(OpCode_FeedForward,       kernels::cuda::feedforward,    kernels::cuda::build_feedforward_cache);
+        register_op(OpCode_Transpose,         kernels::cuda::transpose,      kernels::cuda::build_transpose_cache);
+        register_op(OpCode_MHA,               kernels::cuda::mha_flash,      kernels::cuda::build_mha_cache);
+        register_op(OpCode_LayerNorm,         kernels::cuda::layer_norm,     kernels::cuda::build_layer_norm_cache);
+        register_op(OpCode_AddLayerNorm,      kernels::cuda::add_layer_norm, kernels::cuda::build_add_layer_norm_cache);
+        register_op(OpCode_Linear,            kernels::cuda::linear,         kernels::cuda::build_linear_cache);
+        register_op(OpCode_LinearRelu,        kernels::cuda::linear_relu,    kernels::cuda::build_linear_relu_cache);
+        register_op(OpCode_Add,               kernels::cuda::add);
+        register_op(OpCode_AddRelu,           kernels::cuda::add_relu);
+        register_op(OpCode_Relu,              kernels::cuda::relu);
+        register_op(OpCode_Mul,               kernels::cuda::mul);
+        register_op(OpCode_MaxPool2d,         kernels::cuda::max_pool2d);
+        register_op(OpCode_AvgPool2d,         kernels::cuda::avg_pool2d);
+        register_op(OpCode_AdaptiveAvgPool2d, kernels::cuda::adaptive_avg_pool2d);
+        register_op(OpCode_Size,              kernels::cuda::size);
+        register_op(OpCode_Narrow,            kernels::cuda::narrow);
+        register_op(OpCode_Embedding,         kernels::cuda::embedding);
+        return; 
+#else
+        TORCH_CHECK(false, "FXFusion was built without CUDA support"); 
+#endif
+    }
 
-    register_op(OpCode_Conv2d,            k.conv2d);
-    register_op(OpCode_Conv2dRelu,        k.conv2d_relu);
-    register_op(OpCode_Linear,            k.linear);
-    register_op(OpCode_LinearRelu,        k.linear_relu);
-    register_op(OpCode_Add,               k.add);
-    register_op(OpCode_AddRelu,           k.add_relu);
-    register_op(OpCode_Relu,              k.relu);
-    register_op(OpCode_Mul,               k.mul);
-    register_op(OpCode_MaxPool2d,         k.max_pool2d);
-    register_op(OpCode_AvgPool2d,         k.avg_pool2d);
-    register_op(OpCode_AdaptiveAvgPool2d, k.adaptive_avg_pool2d);
-    register_op(OpCode_Transpose,         k.transpose);
-    register_op(OpCode_Size,              k.size);
-    register_op(OpCode_Narrow,            k.narrow);
-    register_op(OpCode_Embedding,         k.embedding);
-    register_op(OpCode_LayerNorm,         k.layer_norm);
-    register_op(OpCode_AddLayerNorm,      k.add_layer_norm);
-    register_op(OpCode_MHA,               k.mha);
-    register_op(OpCode_FeedForward,       k.feedforward);
+    register_op(OpCode_Conv2d,            kernels::cpu::conv2d);
+    register_op(OpCode_Conv2dRelu,        kernels::cpu::conv2d_relu);
+    register_op(OpCode_Linear,            kernels::cpu::linear);
+    register_op(OpCode_LinearRelu,        kernels::cpu::linear_relu);
+    register_op(OpCode_Add,               kernels::cpu::add);
+    register_op(OpCode_AddRelu,           kernels::cpu::add_relu);
+    register_op(OpCode_Relu,              kernels::cpu::relu);
+    register_op(OpCode_Mul,               kernels::cpu::mul);
+    register_op(OpCode_MaxPool2d,         kernels::cpu::max_pool2d);
+    register_op(OpCode_AvgPool2d,         kernels::cpu::avg_pool2d);
+    register_op(OpCode_AdaptiveAvgPool2d, kernels::cpu::adaptive_avg_pool2d);
+    register_op(OpCode_Transpose,         kernels::cpu::transpose);
+    register_op(OpCode_Size,              kernels::cpu::size);
+    register_op(OpCode_Narrow,            kernels::cpu::narrow);
+    register_op(OpCode_Embedding,         kernels::cpu::embedding);
+    register_op(OpCode_LayerNorm,         kernels::cpu::layer_norm);
+    register_op(OpCode_AddLayerNorm,      kernels::cpu::add_layer_norm);
+    register_op(OpCode_MHA,               kernels::cpu::mha);
+    register_op(OpCode_FeedForward,       kernels::cpu::feedforward);
 }
 
-void OpRegistry::register_op(fxfusion::OpCode op_code, KernelFn fn) {
+void OpRegistry::register_op(OpCode op_code, KernelFn kernel, CacheBuilderFn builder) {
     const auto index = static_cast<size_t>(op_code);
+    TORCH_CHECK(kernel != nullptr, "Cannot register a null kernel for OpCode index: ", index);
     TORCH_CHECK(index < registry_.size(), "Unsupported OpCode: ", index);
-    registry_[index] = std::move(fn);
+    registry_[index] = OpDef{kernel, builder};
 }
 
-KernelFn OpRegistry::get(fxfusion::OpCode op_code) const {
+const OpDef& OpRegistry::get(OpCode op_code) const {
     const auto index = static_cast<size_t>(op_code);
     TORCH_CHECK(index < registry_.size(), "Unsupported OpCode: ", index);
-    TORCH_CHECK(registry_[index] != nullptr, "Unregistered OpCode: ", index);
+    TORCH_CHECK(registry_[index].kernel != nullptr, "Unregistered OpCode: ", index);
     return registry_[index];
 }
 
