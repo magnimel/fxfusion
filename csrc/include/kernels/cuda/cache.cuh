@@ -89,6 +89,7 @@ struct Conv2DReluCache : public Conv2DCache {
 };
 
 std::unique_ptr<Cache> build_linear_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+std::unique_ptr<Cache> build_linear_relu_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
 std::unique_ptr<Cache> build_transpose_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
 std::unique_ptr<Cache> build_feedforward_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
 std::unique_ptr<Cache> build_layer_norm_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
