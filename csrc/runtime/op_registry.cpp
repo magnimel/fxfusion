@@ -7,7 +7,7 @@
 
 #ifdef USE_CUDA
 #include "kernels.cuh"
-#include "caches.cuh" 
+#include "cache.cuh" 
 #endif
 
 #include "kernels.hpp"
