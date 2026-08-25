@@ -1,63 +1,23 @@
 #include "kernels.cuh"
+#include <cublas_v2.h>
+#include "internal/elementwise_kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
 
-__global__ void linear_relu_kernel(
-    const float* __restrict__ x, const float* __restrict__ w, 
-    const float* __restrict__ b, float* __restrict__ out, 
-    int64_t M, int64_t N, int64_t K
-) {
-    __shared__ float xds[LINEAR_TILE_SIZE][LINEAR_TILE_SIZE];
-    __shared__ float wds[LINEAR_TILE_SIZE][LINEAR_TILE_SIZE];
+// =====================================================================
+// LINEAR
+// =====================================================================
+// Input:  x   {M, K}
+//         w   {N, K}  (transposed by cublasSgemm)
+//         b   {N}
+// Output: out {M, N}
+//
+// Operation: out = ReLU(x @ w^T + b)
+// =====================================================================
+void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
+    auto* cache = static_cast<const LinearReluCache*>(cache_base);
+    auto* cuda_ctx = static_cast<GraphCudaContext*>(cache->ctx);
 
-    int64_t bx = blockIdx.x;  int64_t by = blockIdx.y;
-    int64_t tx = threadIdx.x; int64_t ty = threadIdx.y;
-
-    int64_t row = by * LINEAR_TILE_SIZE + ty;
-    int64_t col = bx * LINEAR_TILE_SIZE + tx;
-
-    float res = 0.0f;
-    int64_t num_tiles = (K + LINEAR_TILE_SIZE - 1) / LINEAR_TILE_SIZE;
-
-    for (int64_t k = 0; k < num_tiles; k++) {
-        int64_t x_col = k * LINEAR_TILE_SIZE + tx;
-        int64_t w_col = k * LINEAR_TILE_SIZE + ty;
-
-        xds[ty][tx] = (row < M && x_col < K) ? x[row * K + x_col] : 0.0f;
-        wds[ty][tx] = (col < N && w_col < K) ? w[col * K + w_col] : 0.0f;
-        __syncthreads();
-
-        for (int64_t kT = 0; kT < LINEAR_TILE_SIZE; kT++) {
-            res += xds[ty][kT] * wds[kT][tx];
-        }
-        __syncthreads();
-    }
-
-    if (row < M && col < N) {
-        out[col + row * N] = fmaxf(0.0f, res + b[col]);
-    }
-}
-
-__global__ void linear_relu_kernel_ref(    
-    const float* __restrict__ x, const float* __restrict__ w, 
-    const float* __restrict__ b, float* __restrict__ out, 
-    int64_t M, int64_t N, int64_t K
-) { // naive, non-tiled version
-
-    int64_t col = blockIdx.x * blockDim.x + threadIdx.x;
-    int64_t row = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if(row < M && col < N) {
-        float res = 0.0f;
-        for(int64_t k = 0; k < K; k++) {
-            res+= x[k + row * K] * w[k + col * K];
-        }
-        out[col + row * N] = fmaxf(0.0f, res + b[col]);
-    }
-}
-
-
-void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache*) {
     const auto& x = reg[input_ids[0]];
     const auto& w = reg[input_ids[1]];
     const auto& b = reg[input_ids[2]];
@@ -72,10 +32,25 @@ void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     int64_t M = x.numel() / K;
     int64_t N = w.size(0);
 
-    dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
-    dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-    linear_relu_kernel<<<grid, block>>>(x_ptr, w_ptr, b_ptr, out_ptr, M, N, K);
+    const float alpha = 1.0f;
+    const float beta  = 0.0f;
+
+    cublasStatus_t status = cublasSgemm(
+        cuda_ctx->cublas_handle(),
+        CUBLAS_OP_T, CUBLAS_OP_N,
+        static_cast<int32_t>(N), static_cast<int32_t>(M), static_cast<int32_t>(K),
+        &alpha,
+        w_ptr, static_cast<int32_t>(K),
+        x_ptr, static_cast<int32_t>(K),
+        &beta,
+        out_ptr, static_cast<int32_t>(N)
+    );
+    TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "linear_relu cublasSgemm failed: ", cublas_get_error_string(status));
+
+    dim3 block(256);
+    dim3 grid((M * N + block.x - 1) / block.x);
+    add_kernel<true><<<grid, block>>>(out_ptr, b_ptr, out_ptr, M * N, N);
     
 }
 
-} 
+} // namespace fxfusion::kernels::cuda

@@ -1,120 +1,35 @@
 #include "kernels.cuh"
+#include "internal/flash_attention_kernel.cuh"
 
 namespace fxfusion::kernels::cuda {
 
-// Input:  qkv    {batch, seq, qkv_dim} where qkv_dim = 3*d_model
-//         mask   {batch, 1, seq, seq} bool
-// Output: ctx    {batch, seq, num_heads, head_dim} == {batch, seq, d_model}
-__global__ void flash_attention_kernel(
-    const float* __restrict__ qkv,
-    const bool* __restrict__ mask,
-    float* __restrict__ ctx,
-    int64_t batch, int64_t seq, int64_t num_heads,
-    int64_t head_dim, int64_t d_model, int64_t qkv_dim,
-    float scale_divisor
-) {
-    __shared__ float Q_s[FLASH_BLOCK_SIZE][FLASH_BLOCK_SIZE];
-    __shared__ float K_s[FLASH_BLOCK_SIZE][FLASH_BLOCK_SIZE];
-    __shared__ float V_s[FLASH_BLOCK_SIZE][FLASH_BLOCK_SIZE];
-    __shared__ float S_s[FLASH_BLOCK_SIZE][FLASH_BLOCK_SIZE];  
-    __shared__ float P_s[FLASH_BLOCK_SIZE][FLASH_BLOCK_SIZE];  
-    
-    int64_t bx = blockIdx.x;
-    int64_t by = blockIdx.y;
-    int64_t bh = blockIdx.z;
-    int64_t b = bh / num_heads;
-    int64_t h = bh % num_heads;
-
-    int64_t tx = threadIdx.x;
-    int64_t ty = threadIdx.y;
-
-    int64_t q_row  = by * FLASH_BLOCK_SIZE + ty;
-    int64_t out_col = bx * FLASH_BLOCK_SIZE + tx;
-
-    float O_acc = 0.0f;
-    float running_max = -INFINITY;
-    float running_sum = 0.0f;
-
-    int64_t num_seq_tiles  = (seq + FLASH_BLOCK_SIZE - 1) / FLASH_BLOCK_SIZE;
-    int64_t num_head_tiles = (head_dim + FLASH_BLOCK_SIZE - 1) / FLASH_BLOCK_SIZE;
-
-    for (int64_t k_step = 0; k_step < num_seq_tiles; k_step++) {
-        int64_t kv_row = k_step * FLASH_BLOCK_SIZE + ty;
-        int64_t kv_col = k_step * FLASH_BLOCK_SIZE + tx;
-
-        float score = 0.0f;
-        for (int64_t d_step = 0; d_step < num_head_tiles; d_step++) {
-            int64_t q_d    = d_step * FLASH_BLOCK_SIZE + tx;
-            int64_t k_d    = d_step * FLASH_BLOCK_SIZE + ty;
-
-            int64_t q_offset = (b * seq * qkv_dim) + (q_row * qkv_dim)  + 0 * d_model + h * head_dim + q_d;
-            int64_t k_offset = (b * seq * qkv_dim) + (kv_col * qkv_dim) + 1 * d_model + h * head_dim + k_d;
-
-            Q_s[ty][tx] = (q_row < seq && q_d < head_dim) ? qkv[q_offset] : 0.0f;
-            K_s[ty][tx] = (kv_col < seq && k_d < head_dim) ? qkv[k_offset] : 0.0f;
-            __syncthreads();
-
-            for (int d = 0; d < FLASH_BLOCK_SIZE; d++) {
-                score += Q_s[ty][d] * K_s[d][tx];
-            }
-            __syncthreads();
-        }
-
-        if (q_row < seq && kv_col < seq) {
-            bool keep = mask[b * seq * seq + q_row * seq + kv_col];
-            S_s[ty][tx] = keep ? (score / scale_divisor) : -INFINITY;
-        } else {
-            S_s[ty][tx] = -INFINITY;
-        }
-        __syncthreads();
-
-        float local_max = -INFINITY;
-        for (int i = 0; i < FLASH_BLOCK_SIZE; i++) {
-            local_max = fmaxf(local_max, S_s[ty][i]);
-        }
-
-        float new_max = fmaxf(running_max, local_max);
-        bool has_valid_scores = (new_max == -INFINITY);
-
-        float scale = has_valid_scores ? 0.0f : expf(running_max - new_max);
-        O_acc *= scale;
-
-        float local_sum = 0.0f;
-        for (int i = 0; i < FLASH_BLOCK_SIZE; i++) {
-            float exp_val = has_valid_scores ? 0.0f : expf(S_s[ty][i] - new_max);
-            P_s[ty][i] = exp_val;   
-            local_sum += exp_val;
-        }
-        running_sum = running_sum * scale + local_sum;
-        running_max = new_max;
-        __syncthreads();
-
-        int64_t v_offset = (b * seq * qkv_dim) + (kv_row * qkv_dim) + 2 * d_model + h * head_dim + out_col;
-        V_s[ty][tx] = (kv_row < seq && out_col < head_dim) ? qkv[v_offset] : 0.0f;
-        __syncthreads();
-
-        for (int k = 0; k < FLASH_BLOCK_SIZE; k++) {
-            O_acc += P_s[ty][k] * V_s[k][tx];   
-        }
-        __syncthreads();
-    }
-
-    if (q_row < seq && out_col < head_dim) {
-        int64_t out_idx = b * seq * d_model + q_row * d_model + h * head_dim + out_col;
-        ctx[out_idx] = O_acc / running_sum;
-    }
-}
-
+// =====================================================================
+// MHA FLASH (HOST)
+// =====================================================================
+// Input:  x          {batch, seq, d_model}
+//         mask       {batch, 1, seq, seq} bool
+//         qkv_weight {qkv_dim, d_model}             (QKV projection weight)
+//         qkv_bias   {qkv_dim}                      (QKV projection bias)
+//         out_weight {d_model, d_model}             (output projection weight)
+//         out_bias   {d_model}                      (output projection bias)
+// Output: out        {batch, seq, d_model}
+//
+// Operation:
+//   1. QKV projection:  x @ W_qkv^T + b_qkv          → {batch, seq, qkv_dim}
+//   2. Flash Attention: softmax(QK^T/√d_k)V          → {batch, seq, d_model}
+//   3. Out projection:  attn_out @ W_out^T + b_out   → {batch, seq, d_model}
+// =====================================================================
 void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
     const auto* cache = static_cast<const MHACache*>(cache_base);
+    auto* cuda_ctx = static_cast<GraphCudaContext*>(cache->ctx);
 
-    const auto& x               = reg[input_ids[0]];
-    const auto& mask            = reg[input_ids[1]];
-    const auto& qkv_weight      = reg[input_ids[2]];
-    const auto& qkv_bias        = reg[input_ids[3]];
-    const auto& out_weight      = reg[input_ids[4]];
-    const auto& out_bias        = reg[input_ids[5]];
-    auto& out                   = reg[output_ids[0]];
+    const auto& x          = reg[input_ids[0]];
+    const auto& mask       = reg[input_ids[1]];
+    const auto& qkv_weight = reg[input_ids[2]];
+    const auto& qkv_bias   = reg[input_ids[3]];
+    const auto& out_weight = reg[input_ids[4]];
+    const auto& out_bias   = reg[input_ids[5]];
+    auto& out              = reg[output_ids[0]];
 
     const int64_t num_heads     = params.ints[0];
     const int64_t head_dim      = params.ints[1];
@@ -122,45 +37,87 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     const int64_t qkv_dim       = params.ints[3];
     const float   scale_divisor = params.floats[0];
 
-    const float* x_ptr          = x.data_ptr<float>();
-    const bool*  mask_ptr       = mask.data_ptr<bool>();
-    const float* qkv_w_ptr      = qkv_weight.data_ptr<float>();
-    const float* qkv_b_ptr      = qkv_bias.data_ptr<float>();
-    const float* out_w_ptr      = out_weight.data_ptr<float>();
-    const float* out_b_ptr      = out_bias.data_ptr<float>();
-    float* out_ptr              = out.data_ptr<float>();
+    const float* x_ptr     = x.data_ptr<float>();
+    const bool*  mask_ptr  = mask.data_ptr<bool>();
+    const float* qkv_w_ptr = qkv_weight.data_ptr<float>();
+    const float* qkv_b_ptr = qkv_bias.data_ptr<float>();
+    const float* out_w_ptr = out_weight.data_ptr<float>();
+    const float* out_b_ptr = out_bias.data_ptr<float>();
+    float* out_ptr         = out.data_ptr<float>();
 
-    float* qkv     = (cache->data).qkv;
-    float* ctx     = (cache->data).ctx;
-    int64_t batch  = (cache->data).batch;
-    int64_t seq    = (cache->data).seq;
+    float* qkv     = cache->data.qkv;
+    float* out_ctx = cache->data.out_ctx;
+    int64_t batch  = cache->data.batch;
+    int64_t seq    = cache->data.seq;
 
-    // --- QKV Projection ---
-    {
-        int64_t K = d_model;
-        int64_t M = batch * seq;
-        int64_t N = qkv_dim;
-        dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
-        dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-        linear_kernel<<<grid, block>>>(x_ptr, qkv_w_ptr, qkv_b_ptr, qkv, M, N, K);
+    const float alpha = 1.0f;
+    const float beta  = 0.0f;
+
+    int64_t M = batch * seq;   // rows
+    int64_t K = d_model;       // inner dim
+
+    // -----------------------------------------------------------------
+    // 1. QKV Projection
+    //    x: {M, K}  @  W_qkv^T: {K, qkv_dim}  →  qkv: {M, qkv_dim}
+    // -----------------------------------------------------------------
+    int64_t N_qkv = qkv_dim;
+
+    {   
+        cublasStatus_t status = cublasSgemm(
+            cuda_ctx->cublas_handle(),
+            CUBLAS_OP_T, CUBLAS_OP_N,
+            static_cast<int32_t>(N_qkv), static_cast<int32_t>(M), static_cast<int32_t>(K),
+            &alpha,
+            qkv_w_ptr, static_cast<int32_t>(K),
+            x_ptr,     static_cast<int32_t>(K),
+            &beta,
+            qkv,       static_cast<int32_t>(N_qkv)
+        );
+        TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "mha_flash cublasSgemm [QKV projection] failed: ", cublas_get_error_string(status));
     }
 
-    // --- Flash Attention ---
+    {
+        dim3 block(256);
+        dim3 grid((M * N_qkv + block.x - 1) / block.x);
+        add_kernel<false><<<grid, block>>>(qkv, qkv_b_ptr, qkv, M * N_qkv, N_qkv);
+    }
+
+    // -----------------------------------------------------------------
+    // 2. Flash Attention
+    //    qkv: {batch, seq, qkv_dim}  →  out_ctx: {batch, seq, d_model}
+    // -----------------------------------------------------------------
     {
         dim3 block(FLASH_BLOCK_SIZE, FLASH_BLOCK_SIZE);
         dim3 grid((head_dim + block.x - 1) / block.x, (seq + block.y - 1) / block.y, batch * num_heads);
-        flash_attention_kernel<<<grid, block>>>(qkv, mask_ptr, ctx, batch, seq, num_heads, head_dim, d_model, qkv_dim, scale_divisor);
+        flash_attention_kernel<<<grid, block>>>(qkv, mask_ptr, out_ctx,
+            batch, seq, num_heads, head_dim, d_model, qkv_dim, scale_divisor);
     }
 
-    // --- Out Projection ---
+    // -----------------------------------------------------------------
+    // 3. Output Projection
+    //    out_ctx: {M, K}  @  W_out^T: {K, d_model}  →  out: {M, d_model}
+    // -----------------------------------------------------------------
+    int64_t N_out = d_model;   
+
     {
-        int64_t K = d_model;
-        int64_t M = batch * seq;
-        int64_t N = d_model;
-        dim3 block(LINEAR_TILE_SIZE, LINEAR_TILE_SIZE);
-        dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-        linear_kernel<<<grid, block>>>(ctx, out_w_ptr, out_b_ptr, out_ptr, M, N, K);
+        cublasStatus_t status = cublasSgemm(
+            cuda_ctx->cublas_handle(),
+            CUBLAS_OP_T, CUBLAS_OP_N,
+            static_cast<int32_t>(N_out), static_cast<int32_t>(M), static_cast<int32_t>(K),
+            &alpha,
+            out_w_ptr, static_cast<int32_t>(K),
+            out_ctx,   static_cast<int32_t>(K),
+            &beta,
+            out_ptr,   static_cast<int32_t>(N_out)
+        );
+        TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "mha_flash cublasSgemm [Out projection] failed: ", cublas_get_error_string(status));
+    }
+
+    {
+        dim3 block(256);
+        dim3 grid((M * N_out + block.x - 1) / block.x);
+        add_kernel<false><<<grid, block>>>(out_ptr, out_b_ptr, out_ptr, M * N_out, N_out);
     }
 }
 
-}
+} // namespace fxfusion::kernels::cuda
