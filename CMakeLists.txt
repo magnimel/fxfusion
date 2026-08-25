@@ -28,8 +28,12 @@ else()
 endif()
 
 file(GLOB CPU_KERNEL_SOURCES csrc/kernels/cpu/*.cpp)
-file(GLOB CUDA_KERNEL_SOURCES csrc/kernels/cuda/*.cu)
 file(GLOB RUNTIME_SOURCES csrc/runtime/*.cpp)
+
+file(GLOB CUDA_KERNEL_SOURCES
+    csrc/kernels/cuda/*.cu
+    csrc/kernels/cuda/cache/*.cu
+)
 
 if(CUDAToolkit_FOUND)
     set_source_files_properties(${CUDA_KERNEL_SOURCES} PROPERTIES LANGUAGE CUDA)
@@ -55,6 +59,7 @@ target_include_directories(fxfusion_extension PRIVATE
 if(CUDAToolkit_FOUND)
     target_include_directories(fxfusion_extension PRIVATE
         ${CMAKE_SOURCE_DIR}/csrc/include/kernels/cuda
+        ${CMAKE_SOURCE_DIR}/csrc/include/kernels/cuda/internal
     )
     target_compile_definitions(fxfusion_extension PRIVATE USE_CUDA)
 endif()
@@ -92,4 +97,9 @@ set_target_properties(fxfusion_extension PROPERTIES
     PREFIX ""
     SUFFIX ".so"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/py/fxfusion/lib"
+)
+
+add_custom_command(TARGET fxfusion_extension POST_BUILD
+    COMMAND sh -c "du -sh \"$<TARGET_FILE:fxfusion_extension>\" | cut -f1 | sed 's/^/Output Library Size: /'"
+    VERBATIM
 )
