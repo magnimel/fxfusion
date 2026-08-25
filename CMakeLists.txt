@@ -23,6 +23,21 @@ find_package(CUDAToolkit)
 if(CUDAToolkit_FOUND)
     enable_language(CUDA)
     message(STATUS "CUDA found: ${CUDAToolkit_VERSION} -- building with GPU support")
+
+    find_package(CUDNN REQUIRED)
+    
+    include(FetchContent)
+    FetchContent_Declare(
+        cudnn_frontend
+        GIT_REPOSITORY https://github.com/NVIDIA/cudnn-frontend.git
+        GIT_TAG v1.27.0
+    )
+    set(CUDNN_FRONTEND_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+    set(CUDNN_FRONTEND_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(CUDNN_FRONTEND_BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(cudnn_frontend)
+
+    
 else()
     message(STATUS "CUDA not found -- building CPU-only")
 endif()
@@ -74,6 +89,9 @@ if(CUDAToolkit_FOUND)
     target_link_libraries(fxfusion_extension PRIVATE
         CUDA::cudart
         CUDA::cublas
+        CUDA::cublasLt
+        CUDNN::cudnn
+        cudnn_frontend
     )
     target_compile_options(fxfusion_extension PRIVATE
         $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
