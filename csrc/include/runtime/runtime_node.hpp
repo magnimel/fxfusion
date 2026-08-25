@@ -10,7 +10,7 @@ namespace fxfusion {
 
 class RuntimeNode {
 public:
-    RuntimeNode(const fxfusion::Node* node, const OpDef& def, TensorRegistry& reg, const torch::Device& device);
+    RuntimeNode(GraphContext* ctx, const fxfusion::Node* node, const OpDef& def, TensorRegistry& reg, const torch::Device& device);
     void execute(TensorRegistry& reg);
     OpCode op_code() const { return op_code_; }
     
