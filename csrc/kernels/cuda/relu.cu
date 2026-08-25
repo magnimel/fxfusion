@@ -1,16 +1,7 @@
 #include "kernels.cuh"
+#include "internal/elementwise_kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
-
-__global__ void relu_kernel(const float* a, float* out, int64_t N) {
-    
-    for(int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-        idx < N;
-        idx += blockDim.x * gridDim.x) 
-    {
-        out[idx] = fmaxf(0.0f, a[idx]);
-    }
-} 
 
 void relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
     const auto& a = reg[input_ids[0]];
@@ -25,4 +16,4 @@ void relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outp
     relu_kernel<<<grid, block>>>(a_ptr, out_ptr, N);
 }
 
-}
+} // namespace fxfusion::kernels::cuda

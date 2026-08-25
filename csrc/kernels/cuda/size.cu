@@ -11,4 +11,4 @@ void size(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outp
 
 }
 
-} 
+} // namespace fxfusion::kernels::cuda

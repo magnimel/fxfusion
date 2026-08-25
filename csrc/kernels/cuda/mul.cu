@@ -1,24 +1,7 @@
 #include "kernels.cuh"
+#include "internal/elementwise_kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
-
-__global__ void mul_tensor_scalar_kernel(const float* x, float* out, float scalar, int64_t N) {
-    for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-         idx < N;
-         idx += blockDim.x * gridDim.x)
-    {
-        out[idx] = x[idx] * scalar;
-    }
-}
-
-__global__ void mul_tensor_tensor_kernel(const float* x, const float* y, float* out, int64_t N) {
-    for (int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-         idx < N;
-         idx += blockDim.x * gridDim.x)
-    {
-        out[idx] = x[idx] * y[idx];
-    }
-}
 
 void mul(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache*) {
     const auto& x = reg[input_ids[0]];
@@ -52,4 +35,4 @@ void mul(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outpu
     }
 }
 
-}
+} // namespace fxfusion::kernels::cuda

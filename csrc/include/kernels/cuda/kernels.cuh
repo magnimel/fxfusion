@@ -1,16 +1,12 @@
 #pragma once
 #include <vector>
 #include <torch/torch.h>
-#include "tensor_registry.hpp"
-#include "cache.hpp"
-#include <cuda_runtime.h>
+#include "runtime_types.hpp"
+#include "cuda_graph_context.cuh"
+#include "cache.cuh"
 #include <cmath>
 
 namespace fxfusion::kernels::cuda {
-
-#define LINEAR_TILE_SIZE 32
-#define FLASH_BLOCK_SIZE 16
-#define CONV2D_TILE_DIM  16
 
 void conv2d              (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void conv2d_relu         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
@@ -32,8 +28,5 @@ void add_layer_norm      (TensorRegistry&, const TensorIds&, const TensorIds&, c
 void mha_naive           (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void mha_flash           (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
 void feedforward         (TensorRegistry&, const TensorIds&, const TensorIds&, const Params&, const Cache*);
-
-__global__ void linear_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t P, int64_t K);
-__global__ void linear_relu_kernel(const float* x, const float* w, const float* b, float* out, int64_t M, int64_t N, int64_t K);
 
 }

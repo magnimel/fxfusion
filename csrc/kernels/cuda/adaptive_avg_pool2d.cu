@@ -6,4 +6,4 @@ void adaptive_avg_pool2d (TensorRegistry& reg, const TensorIds& input_ids, const
     TORCH_CHECK(false, "adaptive_avg_pool2d: not implemented yet");
 }
 
-} 
+} // namespace fxfusion::kernels::cuda

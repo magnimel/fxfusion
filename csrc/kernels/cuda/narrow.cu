@@ -12,4 +12,4 @@ void narrow(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& ou
     reg[output_ids[0]].copy_(x.narrow(dim, start, length));
 }
 
-} 
+} // namespace fxfusion::kernels::cuda
