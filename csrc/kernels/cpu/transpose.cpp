@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cpu {
 
-void transpose(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
+void transpose(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache*) {
     const auto& x  = reg[input_ids[0]];
     auto& out       = reg[output_ids[0]];
     const int64_t dim0 = params.ints[0];

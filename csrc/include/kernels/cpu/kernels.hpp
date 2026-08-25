@@ -1,8 +1,7 @@
 #pragma once
 #include <vector>
 #include <torch/torch.h>
-#include "tensor_registry.hpp"
-#include "cache.hpp"
+#include "runtime_types.hpp"
 
 namespace fxfusion::kernels::cpu {
 

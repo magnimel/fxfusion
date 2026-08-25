@@ -2,7 +2,7 @@
 
 namespace fxfusion::kernels::cpu {
 
-void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
+void mha(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache*) {
     
     const auto& x               = reg[input_ids[0]];
     const auto& mask            = reg[input_ids[1]];
