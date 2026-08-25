@@ -30,8 +30,7 @@ ExecutionEngine::ExecutionEngine(const std::string& graph_path, const std::strin
 
 const std::vector<torch::Tensor>& ExecutionEngine::run(const std::vector<torch::Tensor>& inputs) {
     for (size_t i = 0; i < inputs.size(); ++i) {
-        TORCH_CHECK(
-            inputs[i].device() == device_, 
+        TORCH_CHECK(inputs[i].device() == device_, 
             "input engine device mismatch, index: ", i
         );
     }

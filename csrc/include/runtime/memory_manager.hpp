@@ -2,7 +2,7 @@
 #include <vector>
 #include <torch/torch.h>
 #include "graph_generated.h"
-#include "tensor_registry.hpp"
+#include "runtime_types.hpp"
 
 namespace fxfusion {
 

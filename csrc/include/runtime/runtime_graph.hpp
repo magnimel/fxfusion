@@ -12,6 +12,7 @@ public:
     void execute(TensorRegistry& reg);
 
 private:
+    std::unique_ptr<GraphContext> context_;
     std::vector<RuntimeNode> nodes_;
 };
 

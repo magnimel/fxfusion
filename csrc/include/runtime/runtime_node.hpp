@@ -10,7 +10,7 @@ namespace fxfusion {
 
 class RuntimeNode {
 public:
-    RuntimeNode(const fxfusion::Node* node, KernelFn kernel, TensorRegistry& reg);
+    RuntimeNode(const fxfusion::Node* node, const OpDef& def, TensorRegistry& reg, const torch::Device& device);
     void execute(TensorRegistry& reg);
     OpCode op_code() const { return op_code_; }
     
@@ -21,10 +21,6 @@ private:
     TensorIds output_ids_;
     Params params_;
     std::unique_ptr<Cache> cache_;
-    void build_cache(TensorRegistry& reg);
 };
 
 }
-
-
-
