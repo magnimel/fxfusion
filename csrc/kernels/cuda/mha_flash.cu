@@ -32,11 +32,11 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     const auto& out_bias   = reg[input_ids[5]];
     auto& out              = reg[output_ids[0]];
 
-    const int64_t num_heads     = params.ints[0];
-    const int64_t head_dim      = params.ints[1];
-    const int64_t d_model       = params.ints[2];
-    const int64_t qkv_dim       = params.ints[3];
-    const float   scale_divisor = params.floats[0];
+    int64_t num_heads      = params.ints[0];
+    int64_t head_dim       = params.ints[1];
+    int64_t d_model        = params.ints[2];
+    int64_t qkv_dim        = params.ints[3];
+    float   scale_divisor  = params.floats[0];
 
     const float* x_ptr     = x.data_ptr<float>();
     const bool*  mask_ptr  = mask.data_ptr<bool>();

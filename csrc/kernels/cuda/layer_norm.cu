@@ -16,9 +16,9 @@ void layer_norm (TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     const float* b_ptr = b.data_ptr<float>();
     float* out_ptr = out.data_ptr<float>();
 
-    const float eps = params.floats[0];
-    const int64_t M = (cache->data).M;
-    const int64_t N = (cache->data).N;
+    float eps = params.floats[0];
+    int64_t M = (cache->data).M;
+    int64_t N = (cache->data).N;
 
     dim3 block(256);
     dim3 grid(M);

@@ -10,80 +10,75 @@ Conv2DCache::Conv2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds
     auto* cuda_ctx = static_cast<GraphCudaContext*>(ctx);
     this->ctx = ctx;
 
-    const auto& x   = reg[input_ids[0]];
-    const auto& w   = reg[input_ids[1]];
-    auto& out       = reg[output_ids[0]];
+    const auto& x           = reg[input_ids[0]];
+    const auto& w           = reg[input_ids[1]];
+    auto& out               = reg[output_ids[0]];
 
-    int64_t stride_h = params.ints[0];
-    int64_t stride_w = params.ints[1];
-    int64_t pad_h    = params.ints[2];
-    int64_t pad_w    = params.ints[3];
-    int64_t dil_h    = params.ints[4];
-    int64_t dil_w    = params.ints[5];
+    int64_t stride_h        = params.ints[0];
+    int64_t stride_w        = params.ints[1];
+    int64_t pad_h           = params.ints[2];
+    int64_t pad_w           = params.ints[3];
+    int64_t dil_h           = params.ints[4];
+    int64_t dil_w           = params.ints[5];
 
-    int64_t N     = x.size(0);
-    int64_t C_in  = x.size(1);
-    int64_t H_in  = x.size(2);
-    int64_t W_in  = x.size(3);
+    int64_t N               = x.size(0);
+    int64_t C_in            = x.size(1);
+    int64_t H_in            = x.size(2);
+    int64_t W_in            = x.size(3);
 
-    int64_t C_out = out.size(1);
-    int64_t H_out = out.size(2);
-    int64_t W_out = out.size(3);
+    int64_t C_out           = out.size(1);
+    int64_t H_out           = out.size(2);
+    int64_t W_out           = out.size(3);
 
-    int64_t C_in_per_group = w.size(1);
-    int64_t kH = w.size(2);
-    int64_t kW = w.size(3);
+    int64_t C_in_per_group  = w.size(1);
+    int64_t kH              = w.size(2);
+    int64_t kW              = w.size(3);
 
     graph = std::make_unique<fe::graph::Graph>();
 
     graph->set_io_data_type(fe::DataType_t::FLOAT)
-        .set_intermediate_data_type(fe::DataType_t::FLOAT)
-        .set_compute_data_type(fe::DataType_t::FLOAT);
+          .set_intermediate_data_type(fe::DataType_t::FLOAT)
+          .set_compute_data_type(fe::DataType_t::FLOAT)   
 
-    auto X = graph->tensor(fe::graph::Tensor_attributes()
+    data.X = graph->tensor(
+        fe::graph::Tensor_attributes()
         .set_name("x")
         .set_dim({N, C_in, H_in, W_in})
         .set_stride({C_in * H_in * W_in, H_in * W_in, W_in, 1}));
 
-    auto W = graph->tensor(fe::graph::Tensor_attributes()
-        .set_name("w")
-        .set_dim({C_out, C_in_per_group, kH, kW})
-        .set_stride({C_in_per_group * kH * kW, kH * kW, kW, 1}));
+    data.W = graph->tensor(
+             fe::graph::Tensor_attributes()
+             .set_name("w")
+             .set_dim({C_out, C_in_per_group, kH, kW})
+             .set_stride({C_in_per_group * kH * kW, kH * kW, kW, 1}));
 
-    auto conv_out = graph->conv_fprop(X, W,
+    auto conv_out = graph->conv_fprop(data.X, data.W,
         fe::graph::Conv_fprop_attributes()
-            .set_padding({pad_h, pad_w})
-            .set_stride({stride_h, stride_w})
-            .set_dilation({dil_h, dil_w}));
+        .set_padding({pad_h, pad_w})
+        .set_stride({stride_h, stride_w})
+        .set_dilation({dil_h, dil_w}));
 
-    auto B = graph->tensor(fe::graph::Tensor_attributes()
+    data.B = graph->tensor(
+        fe::graph::Tensor_attributes()
         .set_name("bias")
         .set_dim({1, C_out, 1, 1})
         .set_stride({C_out, 1, 1, 1}));
 
-    auto bias_out = graph->pointwise(conv_out, B,
+    auto bias_out = graph->pointwise(conv_out, data.B,
         fe::graph::Pointwise_attributes()
-            .set_mode(fe::PointwiseMode_t::ADD));
+        .set_mode(fe::PointwiseMode_t::ADD));
 
     if (RELU) {
-        auto Y = graph->pointwise(bias_out,
+        data.Y = graph->pointwise(bias_out,
             fe::graph::Pointwise_attributes()
-                .set_mode(fe::PointwiseMode_t::RELU_FWD));
-
-        Y->set_output(true).set_dim({N, C_out, H_out, W_out})
-          .set_stride({C_out * H_out * W_out, H_out * W_out, W_out, 1});
-        data.out_uid = Y->get_uid();
-
+            .set_mode(fe::PointwiseMode_t::RELU_FWD));
     } else {
-        bias_out->set_output(true).set_dim({N, C_out, H_out, W_out})
-                 .set_stride({C_out * H_out * W_out, H_out * W_out, W_out, 1});
-
-        data.out_uid = bias_out->get_uid();
+        data.Y = bias_out;
     }
 
-    data.x_uid   = X->get_uid();
-    data.w_uid   = W->get_uid();
-    data.b_uid   = B->get_uid();
+    data.Y->set_output(true)
+           .set_dim({N, C_out, H_out, W_out})
+           .set_stride({C_out * H_out * W_out, H_out * W_out, W_out, 1});
 
     TORCH_CHECK(graph->validate().is_good(), "cuDNN graph validation failed");
     TORCH_CHECK(graph->build_operation_graph(cuda_ctx->cudnn_handle()).is_good(), "cuDNN build_operation_graph failed");
@@ -97,7 +92,7 @@ Conv2DCache::Conv2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds
 }
 
 Conv2DReluCache::Conv2DReluCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool RELU)
-    : Conv2DCache(ctx, reg, input_ids, output_ids, params, RELU){
+    : Conv2DCache(ctx, reg, input_ids, output_ids, params, RELU) {
 }
 
 std::unique_ptr<Cache> build_conv2d_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params) {

@@ -7,8 +7,9 @@ void add_relu (TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     const auto& a = reg[input_ids[0]];
     const auto& b = reg[input_ids[1]];
     auto& out     = reg[output_ids[0]];
-    const int64_t M = a.numel();
-    const int64_t N = b.numel();
+
+    int64_t M = a.numel();
+    int64_t N = b.numel();
 
     TORCH_CHECK(N > 0 && M % N == 0,
                 "add_relu[cuda]: broadcast requires b's numel to evenly divide a's numel, got a.numel()=", M,

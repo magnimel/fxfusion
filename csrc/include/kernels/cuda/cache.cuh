@@ -74,7 +74,10 @@ struct MHACache : public Cache {
 };
 
 struct Conv2DCacheData {
-    int64_t x_uid, w_uid, b_uid, out_uid;
+    std::shared_ptr<fe::graph::Tensor_attributes> X;
+    std::shared_ptr<fe::graph::Tensor_attributes> W;
+    std::shared_ptr<fe::graph::Tensor_attributes> B;
+    std::shared_ptr<fe::graph::Tensor_attributes> Y;
 };
 
 struct Conv2DCache : public Cache {
