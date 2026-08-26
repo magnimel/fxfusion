@@ -1,4 +1,5 @@
 #include "kernels.cuh"
+#include "internal/embedding_kernel.cuh"
 
 namespace fxfusion::kernels::cuda {
 

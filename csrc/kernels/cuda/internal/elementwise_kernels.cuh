@@ -19,7 +19,7 @@ __global__ void add_kernel(const float* a, const float* b, float* out, int64_t M
         idx < M;
         idx += blockDim.x * gridDim.x) 
     {
-        float res = a[idx] + b[idx % N]
+        float res = a[idx] + b[idx % N];
         out[idx] = RELU ? fmaxf(0.0f, res) : res;
     }
 }

@@ -95,6 +95,7 @@ if(CUDAToolkit_FOUND)
     )
     target_compile_options(fxfusion_extension PRIVATE
         $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+        $<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=128,2810>
     )
 endif()
 
