@@ -49,7 +49,7 @@ void linear(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& ou
 
     dim3 block(256);
     dim3 grid((M * N + block.x - 1) / block.x);
-    add_kernel<false><<<grid, block>>>(out_ptr, b_ptr, out_ptr, M * N, N);
+    add_kernel<<<grid, block>>>(out_ptr, b_ptr, out_ptr, M * N, N);
 }
 
 } // namespace fxfusion::kernels::cuda

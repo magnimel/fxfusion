@@ -20,7 +20,7 @@ void add (TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& outp
 
     dim3 block(256);
     dim3 grid((M + block.x - 1) / block.x);
-    add_kernel<false><<<grid, block>>>(a_ptr, b_ptr, out_ptr, M, N);
+    add_kernel<<<grid, block>>>(a_ptr, b_ptr, out_ptr, M, N);
 }
 
 } // namespace fxfusion::kernels::cuda

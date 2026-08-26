@@ -66,7 +66,7 @@ void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     {
         dim3 block(256);
         dim3 grid((M * N + block.x - 1) / block.x);
-        add_kernel<true><<<grid, block>>>(inter_ptr, b1_ptr, inter_ptr, M * N, N);
+        add_relu_kernel<<<grid, block>>>(inter_ptr, b1_ptr, inter_ptr, M * N, N);
     }
 
     // -----------------------------------------------------------------
@@ -90,7 +90,7 @@ void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     {
         dim3 block(256);
         dim3 grid((M * P + block.x - 1) / block.x);
-        add_kernel<false><<<grid, block>>>(out_ptr, b2_ptr, out_ptr, M * P, P);
+        add_kernel<<<grid, block>>>(out_ptr, b2_ptr, out_ptr, M * P, P);
     }
 }
 

@@ -49,7 +49,7 @@ void linear_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
 
     dim3 block(256);
     dim3 grid((M * N + block.x - 1) / block.x);
-    add_kernel<true><<<grid, block>>>(out_ptr, b_ptr, out_ptr, M * N, N);
+    add_relu_kernel<<<grid, block>>>(out_ptr, b_ptr, out_ptr, M * N, N);
     
 }
 

@@ -1,5 +1,6 @@
 #include "kernels.cuh"
 #include "internal/flash_attention_kernel.cuh"
+#include "internal/elementwise_kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
 
@@ -79,7 +80,7 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     {
         dim3 block(256);
         dim3 grid((M * N_qkv + block.x - 1) / block.x);
-        add_kernel<false><<<grid, block>>>(qkv, qkv_b_ptr, qkv, M * N_qkv, N_qkv);
+        add_kernel<<<grid, block>>>(qkv, qkv_b_ptr, qkv, M * N_qkv, N_qkv);
     }
 
     // -----------------------------------------------------------------
@@ -116,7 +117,7 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     {
         dim3 block(256);
         dim3 grid((M * N_out + block.x - 1) / block.x);
-        add_kernel<false><<<grid, block>>>(out_ptr, out_b_ptr, out_ptr, M * N_out, N_out);
+        add_kernel<<<grid, block>>>(out_ptr, out_b_ptr, out_ptr, M * N_out, N_out);
     }
 }
 
