@@ -88,7 +88,6 @@ target_link_libraries(fxfusion_extension PRIVATE
 if(CUDAToolkit_FOUND)
     target_link_libraries(fxfusion_extension PRIVATE
         CUDA::cudart
-        CUDA::cublas
         CUDA::cublasLt
         CUDNN::cudnn
         cudnn_frontend
