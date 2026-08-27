@@ -11,11 +11,11 @@ void conv2d_relu(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     const auto& b = reg[input_ids[2]];
     auto& out      = reg[output_ids[0]];
 
-    std::unordered_map<int64_t, void*> variant_pack = {
-        {(cache->data).x_uid,   x.data_ptr<float>()},
-        {(cache->data).w_uid,   w.data_ptr<float>()},
-        {(cache->data).b_uid,   b.data_ptr<float>()},
-        {(cache->data).out_uid, out.data_ptr<float>()},
+    std::unordered_map<std::shared_ptr<fe::graph::Tensor_attributes>, void*> variant_pack = {
+        {cache->data.X, x.data_ptr<float>()},
+        {cache->data.W, w.data_ptr<float>()},
+        {cache->data.B, b.data_ptr<float>()},
+        {cache->data.Y, out.data_ptr<float>()},
     };
 
     auto status = cache->graph->execute(cuda_ctx->cudnn_handle(), variant_pack, cuda_ctx->workspace_ptr());
