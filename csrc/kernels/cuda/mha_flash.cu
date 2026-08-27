@@ -1,6 +1,5 @@
 #include "kernels.cuh"
 #include "internal/flash_attention_kernel.cuh"
-#include "internal/elementwise_kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
 
