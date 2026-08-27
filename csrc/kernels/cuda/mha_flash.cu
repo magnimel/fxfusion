@@ -21,15 +21,13 @@ namespace fxfusion::kernels::cuda {
 //   3. Out projection:  attn_out @ W_out^T + b_out   → {batch, seq, d_model}
 // =====================================================================
 void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache* cache_base) {
-    const auto* cache = static_cast<const MHACache*>(cache_base);
+const auto* cache = static_cast<const MHACache*>(cache_base);
     auto* cuda_ctx = static_cast<GraphCudaContext*>(cache->ctx);
 
     const auto& x          = reg[input_ids[0]];
     const auto& mask       = reg[input_ids[1]];
     const auto& qkv_weight = reg[input_ids[2]];
-    const auto& qkv_bias   = reg[input_ids[3]];
     const auto& out_weight = reg[input_ids[4]];
-    const auto& out_bias   = reg[input_ids[5]];
     auto& out              = reg[output_ids[0]];
 
     int64_t num_heads      = params.ints[0];
@@ -41,9 +39,7 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     const float* x_ptr     = x.data_ptr<float>();
     const bool*  mask_ptr  = mask.data_ptr<bool>();
     const float* qkv_w_ptr = qkv_weight.data_ptr<float>();
-    const float* qkv_b_ptr = qkv_bias.data_ptr<float>();
     const float* out_w_ptr = out_weight.data_ptr<float>();
-    const float* out_b_ptr = out_bias.data_ptr<float>();
     float* out_ptr         = out.data_ptr<float>();
 
     float* qkv     = cache->data.qkv;
@@ -51,37 +47,30 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     int64_t batch  = cache->data.batch;
     int64_t seq    = cache->data.seq;
 
+    auto* descSet1 = cache->descSet1.get();
+    auto* descSet2 = cache->descSet2.get();
+
     const float alpha = 1.0f;
     const float beta  = 0.0f;
-
-    int64_t M = batch * seq;   // rows
-    int64_t K = d_model;       // inner dim
 
     // -----------------------------------------------------------------
     // 1. QKV Projection
     //    x: {M, K}  @  W_qkv^T: {K, qkv_dim}  →  qkv: {M, qkv_dim}
     // -----------------------------------------------------------------
-    int64_t N_qkv = qkv_dim;
-
-    {   
-        cublasStatus_t status = cublasSgemm(
-            cuda_ctx->cublas_handle(),
-            CUBLAS_OP_T, CUBLAS_OP_N,
-            static_cast<int32_t>(N_qkv), static_cast<int32_t>(M), static_cast<int32_t>(K),
-            &alpha,
-            qkv_w_ptr, static_cast<int32_t>(K),
-            x_ptr,     static_cast<int32_t>(K),
-            &beta,
-            qkv,       static_cast<int32_t>(N_qkv)
-        );
-        TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "mha_flash cublasSgemm [QKV projection] failed: ", cublas_get_error_string(status));
-    }
-
-    {
-        dim3 block(256);
-        dim3 grid((M * N_qkv + block.x - 1) / block.x);
-        add_kernel<<<grid, block>>>(qkv, qkv_b_ptr, qkv, M * N_qkv, N_qkv);
-    }
+    CUBLASLT_CHECK(cublasLtMatmul(
+        cuda_ctx->cublasLt_handle(),
+        descSet1->operationDesc,
+        &alpha,
+        qkv_w_ptr, descSet1->Adesc,
+        x_ptr, descSet1->Bdesc,
+        &beta,
+        qkv, descSet1->Cdesc,
+        qkv, descSet1->Cdesc,
+        &cache->algo1,
+        cuda_ctx->workspace_ptr(),
+        cuda_ctx->workspace_size(),
+        /* stream */ nullptr
+    ));
 
     // -----------------------------------------------------------------
     // 2. Flash Attention
@@ -98,27 +87,20 @@ void mha_flash(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds&
     // 3. Output Projection
     //    out_ctx: {M, K}  @  W_out^T: {K, d_model}  →  out: {M, d_model}
     // -----------------------------------------------------------------
-    int64_t N_out = d_model;   
-
-    {
-        cublasStatus_t status = cublasSgemm(
-            cuda_ctx->cublas_handle(),
-            CUBLAS_OP_T, CUBLAS_OP_N,
-            static_cast<int32_t>(N_out), static_cast<int32_t>(M), static_cast<int32_t>(K),
-            &alpha,
-            out_w_ptr, static_cast<int32_t>(K),
-            out_ctx,   static_cast<int32_t>(K),
-            &beta,
-            out_ptr,   static_cast<int32_t>(N_out)
-        );
-        TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "mha_flash cublasSgemm [Out projection] failed: ", cublas_get_error_string(status));
-    }
-
-    {
-        dim3 block(256);
-        dim3 grid((M * N_out + block.x - 1) / block.x);
-        add_kernel<<<grid, block>>>(out_ptr, out_b_ptr, out_ptr, M * N_out, N_out);
-    }
+    CUBLASLT_CHECK(cublasLtMatmul(
+        cuda_ctx->cublasLt_handle(),
+        descSet2->operationDesc,
+        &alpha,
+        out_w_ptr, descSet2->Adesc,
+        out_ctx, descSet2->Bdesc,
+        &beta,
+        out_ptr, descSet2->Cdesc,
+        out_ptr, descSet2->Cdesc,
+        &cache->algo2,
+        cuda_ctx->workspace_ptr(),
+        cuda_ctx->workspace_size(),
+        /* stream */ nullptr
+    ));
 }
 
 } // namespace fxfusion::kernels::cuda

@@ -1,5 +1,4 @@
 #include "kernels.cuh"
-#include <cublas_v2.h>
 #include "internal/elementwise_kernels.cuh"
 
 namespace fxfusion::kernels::cuda {
@@ -24,23 +23,17 @@ void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
 
     const auto& x  = reg[input_ids[0]];
     const auto& w1 = reg[input_ids[1]];
-    const auto& b1 = reg[input_ids[2]];
     const auto& w2 = reg[input_ids[3]];
-    const auto& b2 = reg[input_ids[4]];
     auto& out      = reg[output_ids[0]];
 
     const float* x_ptr  = x.data_ptr<float>();
     const float* w1_ptr = w1.data_ptr<float>();
-    const float* b1_ptr = b1.data_ptr<float>();
     const float* w2_ptr = w2.data_ptr<float>();
-    const float* b2_ptr = b2.data_ptr<float>();
     float* out_ptr      = out.data_ptr<float>();
     float* inter_ptr    = cache->data.intermediate;
 
-    int64_t K = x.size(-1);
-    int64_t M = x.numel() / K;
-    int64_t N = w1.size(0);
-    int64_t P = w2.size(0);
+    auto* descSet1 = cache->descSet1.get();
+    auto* descSet2 = cache->descSet2.get();
 
     const float alpha = 1.0f;
     const float beta  = 0.0f;
@@ -49,49 +42,39 @@ void feedforward(TensorRegistry& reg, const TensorIds& input_ids, const TensorId
     // 1. First projection:  x @ w1^T + b1  →  intermediate
     //    x: {M, K}  @  w1^T: {K, N}  →  inter: {M, N}
     // -----------------------------------------------------------------
-    {
-        cublasStatus_t status = cublasSgemm(
-            cuda_ctx->cublas_handle(),
-            CUBLAS_OP_T, CUBLAS_OP_N,
-            static_cast<int32_t>(N), static_cast<int32_t>(M), static_cast<int32_t>(K),
+    CUBLASLT_CHECK(cublasLtMatmul(
+            cuda_ctx->cublasLt_handle(),
+            descSet1->operationDesc,
             &alpha,
-            w1_ptr, static_cast<int32_t>(K),
-            x_ptr,  static_cast<int32_t>(K),
+            w1_ptr, descSet1->Adesc,
+            x_ptr, descSet1->Bdesc,
             &beta,
-            inter_ptr, static_cast<int32_t>(N)
-        );
-        TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "feedforward cublasSgemm [1] failed: ", cublas_get_error_string(status));
-    }
-
-    {
-        dim3 block(256);
-        dim3 grid((M * N + block.x - 1) / block.x);
-        add_relu_kernel<<<grid, block>>>(inter_ptr, b1_ptr, inter_ptr, M * N, N);
-    }
+            inter_ptr, descSet1->Cdesc,
+            inter_ptr, descSet1->Cdesc, 
+            &cache->algo1,
+            cuda_ctx->workspace_ptr(),
+            cuda_ctx->workspace_size(),
+            /* stream */ nullptr
+    ));
 
     // -----------------------------------------------------------------
     // 2. Second projection:  inter @ w2^T + b2  →  out
     //    inter: {M, N}  @  w2^T: {N, P}  →  out: {M, P}
     // -----------------------------------------------------------------
-    {
-        cublasStatus_t status = cublasSgemm(
-            cuda_ctx->cublas_handle(),
-            CUBLAS_OP_T, CUBLAS_OP_N,
-            static_cast<int32_t>(P), static_cast<int32_t>(M), static_cast<int32_t>(N),
+        CUBLASLT_CHECK(cublasLtMatmul(
+            cuda_ctx->cublasLt_handle(),
+            descSet2->operationDesc,
             &alpha,
-            w2_ptr, static_cast<int32_t>(N),
-            inter_ptr, static_cast<int32_t>(N),
+            w2_ptr, descSet2->Adesc,
+            inter_ptr, descSet2->Bdesc,
             &beta,
-            out_ptr, static_cast<int32_t>(P)
-        );
-        TORCH_CHECK(status == CUBLAS_STATUS_SUCCESS, "feedforward cublasSgemm [2] failed: ", cublas_get_error_string(status));
-    }
-
-    {
-        dim3 block(256);
-        dim3 grid((M * P + block.x - 1) / block.x);
-        add_kernel<<<grid, block>>>(out_ptr, b2_ptr, out_ptr, M * P, P);
-    }
+            out_ptr, descSet2->Cdesc,
+            out_ptr, descSet2->Cdesc, 
+            &cache->algo2,
+            cuda_ctx->workspace_ptr(),
+            cuda_ctx->workspace_size(),
+            /* stream */ nullptr
+        ));
 }
 
 } // namespace fxfusion::kernels::cuda
