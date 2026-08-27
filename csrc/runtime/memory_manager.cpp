@@ -31,7 +31,6 @@ MemoryManager::MemoryManager(const fxfusion::Graph* graph, const torch::Device& 
     TORCH_CHECK(graph != nullptr, "Execution graph is not loaded");
 
     int64_t arena_bytes = static_cast<int64_t>(graph->arena_size());
-    TORCH_CHECK(arena_bytes >= 0, "Arena size must not be negative, got ", arena_bytes);
 
     arena_ = torch::empty({arena_bytes},
         torch::TensorOptions().device(device).dtype(torch::kUInt8)

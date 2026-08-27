@@ -3,6 +3,7 @@
 #include "runtime_types.hpp"
 #include <torch/torch.h>
 #include <cudnn_frontend.h>
+#include <cublasLt.h>
 #include <cudnn.h>
 #include <memory>
 
@@ -10,13 +11,39 @@ namespace fxfusion::kernels::cuda {
 
 namespace fe = cudnn_frontend;
 
+struct CublasLtDescriptorSet {
+    cublasLtMatmulDesc_t       operationDesc = nullptr;
+    cublasLtMatrixLayout_t     Adesc         = nullptr;
+    cublasLtMatrixLayout_t     Bdesc         = nullptr;
+    cublasLtMatrixLayout_t     Cdesc         = nullptr;
+    cublasLtMatmulPreference_t preference    = nullptr;
+
+    void init(GraphCudaContext* ctx, cublasLtMatmulAlgo_t& algo, int64_t K, int64_t M, int64_t N, const void* bias, bool RELU);
+};
+
+struct CublasLtDescriptorSetDeleter {
+    void operator()(CublasLtDescriptorSet* h) const {
+        if (h == nullptr) return;
+        if (h->preference)    cublasLtMatmulPreferenceDestroy(h->preference);
+        if (h->Cdesc)         cublasLtMatrixLayoutDestroy(h->Cdesc);
+        if (h->Bdesc)         cublasLtMatrixLayoutDestroy(h->Bdesc);
+        if (h->Adesc)         cublasLtMatrixLayoutDestroy(h->Adesc);
+        if (h->operationDesc) cublasLtMatmulDescDestroy(h->operationDesc);
+        delete h;
+    }
+};
+
+using DescriptorSet = std::unique_ptr<CublasLtDescriptorSet, CublasLtDescriptorSetDeleter>;
+
 struct LinearCache : public Cache {
-    LinearCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+    LinearCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool RELU);
+    DescriptorSet descSet;
+    cublasLtMatmulAlgo_t algo,
     GraphContext* ctx;
 };
 
 struct LinearReluCache : public LinearCache {
-    LinearReluCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+    LinearReluCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool RELU);
 };
 
 struct TransposeCacheData {
@@ -39,9 +66,16 @@ struct FeedForwardCacheData {
 
 struct FeedForwardCache : public Cache {
     FeedForwardCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+    
     torch::Tensor intermediate_buf; 
     FeedForwardCacheData data;     
     GraphContext* ctx; 
+    
+    DescriptorSet descSet1;
+    DescriptorSet descSet2;
+    
+    cublasLtMatmulAlgo_t algo1; 
+    cublasLtMatmulAlgo_t algo2; 
 };
 
 struct LayerNormCacheData {
@@ -71,6 +105,12 @@ struct MHACache : public Cache {
     torch::Tensor out_ctx_buf;
     MHACacheData data; 
     GraphContext* ctx;
+
+    DescriptorSet descSet1;
+    DescriptorSet descSet2;
+    
+    cublasLtMatmulAlgo_t algo1; 
+    cublasLtMatmulAlgo_t algo2; 
 };
 
 struct Conv2DCacheData {
