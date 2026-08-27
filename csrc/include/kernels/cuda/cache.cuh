@@ -38,7 +38,7 @@ using DescriptorSet = std::unique_ptr<CublasLtDescriptorSet, CublasLtDescriptorS
 struct LinearCache : public Cache {
     LinearCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool RELU);
     DescriptorSet descSet;
-    cublasLtMatmulAlgo_t algo,
+    cublasLtMatmulAlgo_t algo;
     GraphContext* ctx;
 };
 
