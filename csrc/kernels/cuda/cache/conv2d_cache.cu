@@ -38,7 +38,7 @@ Conv2DCache::Conv2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds
 
     graph->set_io_data_type(fe::DataType_t::FLOAT)
           .set_intermediate_data_type(fe::DataType_t::FLOAT)
-          .set_compute_data_type(fe::DataType_t::FLOAT)   
+          .set_compute_data_type(fe::DataType_t::FLOAT);   
 
     data.X = graph->tensor(
         fe::graph::Tensor_attributes()
