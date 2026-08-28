@@ -9,7 +9,7 @@ void conv2d(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& ou
     const auto& x = reg[input_ids[0]];
     const auto& w = reg[input_ids[1]];
     const auto& b = reg[input_ids[2]];
-    auto& out      = reg[output_ids[0]];
+    auto& out     = reg[output_ids[0]];
 
     std::unordered_map<std::shared_ptr<fe::graph::Tensor_attributes>, void*> variant_pack = {
         {cache->data.X, x.data_ptr<float>()},

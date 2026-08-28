@@ -20,22 +20,22 @@ OpRegistry::OpRegistry(const torch::Device& device) {
 
     if (device.is_cuda()) {
 #ifdef USE_CUDA
-        register_op(OpCode_Conv2d,            kernels::cuda::conv2d,         kernels::cuda::build_conv2d_cache);
-        register_op(OpCode_Conv2dRelu,        kernels::cuda::conv2d_relu,    kernels::cuda::build_conv2d_relu_cache);
-        register_op(OpCode_FeedForward,       kernels::cuda::feedforward,    kernels::cuda::build_feedforward_cache);
-        register_op(OpCode_Transpose,         kernels::cuda::transpose,      kernels::cuda::build_transpose_cache);
-        register_op(OpCode_MHA,               kernels::cuda::mha_flash,      kernels::cuda::build_mha_cache);
-        register_op(OpCode_LayerNorm,         kernels::cuda::layer_norm,     kernels::cuda::build_layer_norm_cache);
-        register_op(OpCode_AddLayerNorm,      kernels::cuda::add_layer_norm, kernels::cuda::build_add_layer_norm_cache);
-        register_op(OpCode_Linear,            kernels::cuda::linear,         kernels::cuda::build_linear_cache);
-        register_op(OpCode_LinearRelu,        kernels::cuda::linear_relu,    kernels::cuda::build_linear_relu_cache);
+        register_op(OpCode_Conv2d,            kernels::cuda::conv2d,                kernels::cuda::build_conv2d_cache);
+        register_op(OpCode_Conv2dRelu,        kernels::cuda::conv2d_relu,           kernels::cuda::build_conv2d_relu_cache);
+        register_op(OpCode_FeedForward,       kernels::cuda::feedforward,           kernels::cuda::build_feedforward_cache);
+        register_op(OpCode_Transpose,         kernels::cuda::transpose,             kernels::cuda::build_transpose_cache);
+        register_op(OpCode_MHA,               kernels::cuda::mha_flash,             kernels::cuda::build_mha_cache);
+        register_op(OpCode_LayerNorm,         kernels::cuda::layer_norm,            kernels::cuda::build_layer_norm_cache);
+        register_op(OpCode_AddLayerNorm,      kernels::cuda::add_layer_norm,        kernels::cuda::build_add_layer_norm_cache);
+        register_op(OpCode_Linear,            kernels::cuda::linear,                kernels::cuda::build_linear_cache);
+        register_op(OpCode_LinearRelu,        kernels::cuda::linear_relu,           kernels::cuda::build_linear_relu_cache);
         register_op(OpCode_Add,               kernels::cuda::add);
         register_op(OpCode_AddRelu,           kernels::cuda::add_relu);
         register_op(OpCode_Relu,              kernels::cuda::relu);
         register_op(OpCode_Mul,               kernels::cuda::mul);
-        register_op(OpCode_MaxPool2d,         kernels::cuda::max_pool2d);
-        register_op(OpCode_AvgPool2d,         kernels::cuda::avg_pool2d);
-        register_op(OpCode_AdaptiveAvgPool2d, kernels::cuda::adaptive_avg_pool2d);
+        register_op(OpCode_MaxPool2d,         kernels::cuda::max_pool2d,            kernels::cuda::build_max_pool2d_cache);
+        register_op(OpCode_AvgPool2d,         kernels::cuda::avg_pool2d,            kernels::cuda::build_avg_pool2d_cache);
+        register_op(OpCode_AdaptiveAvgPool2d, kernels::cuda::adaptive_avg_pool2d,   kernels::cuda::build_adaptive_avg_pool2d_cache);
         register_op(OpCode_Size,              kernels::cuda::size);
         register_op(OpCode_Narrow,            kernels::cuda::narrow);
         register_op(OpCode_Embedding,         kernels::cuda::embedding);
