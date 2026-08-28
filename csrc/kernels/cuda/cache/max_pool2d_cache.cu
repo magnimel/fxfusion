@@ -46,12 +46,13 @@ MaxPool2DCache::MaxPool2DCache(GraphContext* ctx, TensorRegistry& reg, const Ten
 
     data.Y = graph->resample(data.X,
         fe::graph::Resample_attributes()
+        .set_generate_index(false)
         .set_resampling_mode(fe::ResampleMode_t::MAXPOOL)
         .set_padding_mode(fe::PaddingMode_t::NEG_INF_PAD)
         .set_window({kH, kW})
         .set_stride({stride_h, stride_w})
         .set_pre_padding({pad_h, pad_w})
-        .set_post_padding({pad_h, pad_w}));
+        .set_post_padding({pad_h, pad_w}))[0];
         // .set_dilation({dil_h, dil_w}) not supported
 
     data.Y->set_output(true)

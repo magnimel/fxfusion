@@ -49,12 +49,13 @@ AvgPool2DCache::AvgPool2DCache(GraphContext* ctx, TensorRegistry& reg, const Ten
 
     data.Y = graph->resample(data.X,
         fe::graph::Resample_attributes()
+        .set_generate_index(false)
         .set_resampling_mode(fe::ResampleMode_t::AVGPOOL_INCLUDE_PADDING)
         .set_padding_mode(fe::PaddingMode_t::ZERO_PAD)
         .set_window({kH, kW})
         .set_stride({stride_h, stride_w})
         .set_pre_padding({pad_h, pad_w})
-        .set_post_padding({pad_h, pad_w}));
+        .set_post_padding({pad_h, pad_w}))[0];
 
     data.Y->set_output(true)
         .set_dim({N, C_out, H_out, W_out})

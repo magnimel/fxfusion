@@ -1,8 +1,5 @@
 .PHONY: compile rebuild clean gen run
 
-# CC := /opt/homebrew/bin/gcc-15
-# CXX := /opt/homebrew/bin/g++-15
-
 CC := /usr/bin/gcc 
 CXX := /usr/bin/g++
 
@@ -22,9 +19,6 @@ compile: $(BUILD_DIR)/.configured
 	@cmake --build $(BUILD_DIR)
 
 rebuild: clean compile
-
-run:
-	./$(BUILD_DIR)/engine
 
 test:
 	@pytest -v
