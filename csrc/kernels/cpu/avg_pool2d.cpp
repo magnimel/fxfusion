@@ -4,7 +4,7 @@ namespace fxfusion::kernels::cpu {
 
 void avg_pool2d(TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, const Cache*) {
     const auto& x = reg[input_ids[0]];
-    auto& out      = reg[output_ids[0]];
+    auto& out     = reg[output_ids[0]];
 
     const std::vector<int64_t> kernel_size = {params.ints[0], params.ints[1]};
     const std::vector<int64_t> stride      = {params.ints[2], params.ints[3]};

@@ -113,6 +113,11 @@ struct MHACache : public Cache {
     cublasLtMatmulAlgo_t algo2; 
 };
 
+struct CudnnFeGraphCache : public Cache {
+    std::unique_ptr<fe::graph::Graph> graph;
+    GraphContext* ctx = nullptr;
+};
+
 struct Conv2DCacheData {
     std::shared_ptr<fe::graph::Tensor_attributes> X;
     std::shared_ptr<fe::graph::Tensor_attributes> W;
@@ -120,15 +125,32 @@ struct Conv2DCacheData {
     std::shared_ptr<fe::graph::Tensor_attributes> Y;
 };
 
-struct Conv2DCache : public Cache {
+struct Pool2DCacheData {
+    std::shared_ptr<fe::graph::Tensor_attributes> X;
+    std::shared_ptr<fe::graph::Tensor_attributes> Y;
+};
+
+struct Conv2DCache : public CudnnFeGraphCache {
     Conv2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool RELU);
-    std::unique_ptr<fe::graph::Graph> graph;
     Conv2DCacheData data;
-    GraphContext* ctx;
 };
 
 struct Conv2DReluCache : public Conv2DCache {
     Conv2DReluCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool RELU);
+};
+
+struct AvgPool2DCache : public CudnnFeGraphCache {
+    AvgPool2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool ADAPTIVE);
+    Pool2DCacheData data;
+};
+
+struct MaxPool2DCache : public CudnnFeGraphCache {
+    MaxPool2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+    Pool2DCacheData data;
+};
+
+struct AdaptiveAvgPool2DCache : public AvgPool2DCache {
+    AdaptiveAvgPool2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params, bool ADAPTIVE);
 };
 
 std::unique_ptr<Cache> build_linear_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
@@ -140,5 +162,8 @@ std::unique_ptr<Cache> build_add_layer_norm_cache(GraphContext* ctx, TensorRegis
 std::unique_ptr<Cache> build_mha_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
 std::unique_ptr<Cache> build_conv2d_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
 std::unique_ptr<Cache> build_conv2d_relu_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+std::unique_ptr<Cache> build_avg_pool2d_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+std::unique_ptr<Cache> build_max_pool2d_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
+std::unique_ptr<Cache> build_adaptive_avg_pool2d_cache(GraphContext* ctx, TensorRegistry& reg, const TensorIds& input_ids, const TensorIds& output_ids, const Params& params);
 
 } // namespace fxfusion::kernels::cuda
