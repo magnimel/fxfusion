@@ -22,6 +22,10 @@ MaxPool2DCache::MaxPool2DCache(GraphContext* ctx, TensorRegistry& reg, const Ten
 
     int64_t dil_h           = params.ints[6];
     int64_t dil_w           = params.ints[7];
+
+    TORCH_CHECK(dil_h == 1 && dil_w == 1,
+        "max_pool2d: cuDNN Frontend Resampling does not support dilation; "
+        "expected dilation=(1, 1), got dilation=(", dil_h, ", ", dil_w, ")");
     
     int64_t N               = x.size(0);
     int64_t C_in            = x.size(1);
@@ -61,7 +65,7 @@ MaxPool2DCache::MaxPool2DCache(GraphContext* ctx, TensorRegistry& reg, const Ten
 
     TORCH_CHECK(graph->validate().is_good(), "cuDNN graph validation failed");
     TORCH_CHECK(graph->build_operation_graph(cuda_ctx->cudnn_handle()).is_good(), "cuDNN build_operation_graph failed");
-    TORCH_CHECK(graph->create_execution_plans({fe::HeurMode_t::A}).is_good(), "cuDNN create_execution_plans failed");
+    TORCH_CHECK(graph->create_execution_plans({fe::HeurMode_t::A, fe::HeurMode_t::FALLBACK}).is_good(), "cuDNN create_execution_plans failed");
     TORCH_CHECK(graph->check_support().is_good(), "cuDNN check_support failed");
     TORCH_CHECK(graph->build_plans().is_good(), "cuDNN build_plans failed");
 

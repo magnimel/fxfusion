@@ -82,7 +82,7 @@ Conv2DCache::Conv2DCache(GraphContext* ctx, TensorRegistry& reg, const TensorIds
 
     TORCH_CHECK(graph->validate().is_good(), "cuDNN graph validation failed");
     TORCH_CHECK(graph->build_operation_graph(cuda_ctx->cudnn_handle()).is_good(), "cuDNN build_operation_graph failed");
-    TORCH_CHECK(graph->create_execution_plans({fe::HeurMode_t::A}).is_good(), "cuDNN create_execution_plans failed");
+    TORCH_CHECK(graph->create_execution_plans({fe::HeurMode_t::A, fe::HeurMode_t::FALLBACK}).is_good(), "cuDNN create_execution_plans failed");
     TORCH_CHECK(graph->check_support().is_good(), "cuDNN check_support failed");
     TORCH_CHECK(graph->build_plans().is_good(), "cuDNN build_plans failed");
 
