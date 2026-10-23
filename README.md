@@ -1,59 +1,67 @@
 # FXFusion — Graph Compiler and Runtime for Neural Network Inference
 
-Compiler and runtime framework for lowering PyTorch FX graphs into optimized execution plans through graph rewriting, operator fusion, shape propagation, memory planning, and custom C++/CUDA execution backends.
+Compiler and runtime framework for lowering PyTorch FX graphs into optimized execution plans through graph rewriting, operator fusion, shape propagation, static memory planning, and native C++/CUDA execution backends.
 
-The project explores compiler and runtime techniques used in modern inference systems such as TensorRT, TorchInductor, ONNX Runtime, TVM, and XLA.
+FXFusion explores ahead-of-time inference execution, activation-memory reuse, precomputed operator dispatch, and integration with optimized GPU libraries. Its design draws on techniques used in systems such as TensorRT, TorchInductor, ONNX Runtime, TVM, and XLA.
 
 ## Performance
 
-Detailed benchmark results are available in:
+Benchmark reports:
 
 * [Benchmark Report (CPU)](./benchmarks/README_CPU.md)
-
 * [Benchmark Report (CUDA)](./benchmarks/README_CUDA.md)
 
 ### CPU Backend
 
-* Up to **2.16× faster** than PyTorch eager execution on dispatch-heavy inference workloads
+* Up to **2.16× faster** than PyTorch eager on dispatch-heavy inference workloads
 * Up to **1.67× faster** than `torch.compile` on dispatch-heavy MLP benchmarks
-* Up to **1.35× faster** than PyTorch eager execution on dispatch-heavy GPT forward and decoding workloads
+* Up to **1.35× faster** than PyTorch eager on dispatch-heavy GPT forward and decoding workloads
 * Outperforms `torch.compile` on dispatch-heavy GPT decoding workloads
-* Outperforms both PyTorch eager execution and `torch.compile` on balanced MLP workloads
-* Performance comparable to or exceeding `torch.compile` on ResNet-18 CPU inference
-* Performance parity with PyTorch eager execution on ResNet-50 CPU inference
+* Outperforms both PyTorch eager and `torch.compile` on balanced MLP workloads
+* Performance comparable to or exceeding `torch.compile` on ResNet-18 inference
+* Performance parity with PyTorch eager on ResNet-50 inference
 
 ### CUDA Backend
 
-* Up to **8.3× faster** than PyTorch eager and **2.3× faster** than `torch.compile` on dispatch-heavy GPT forward passes (many small kernel launches, where compiled-graph dispatch overhead dominates)
-* Up to **4.9× faster** than PyTorch eager and **2.5× faster** than `torch.compile` on dispatch-heavy autoregressive GPT decoding
-* Up to **2.6× faster** than PyTorch eager on compute-heavy GPT forward passes (larger `d_model`, batch); roughly at parity with `torch.compile`
-* On compute-heavy decode workloads, currently at parity with PyTorch eager and behind `torch.compile` (~2×) — hand-written tiled GEMM kernels not yet competitive with vendor-optimized libraries at large matmul sizes; see cuBLASLt integration under Future Work
+Preliminary results **after cuBLASLt and cuDNN integration**, measured on an NVIDIA T4:
+
+* **Dispatch-heavy MLP:** approximately **8.3× faster** than PyTorch eager and **7.4× faster** than `torch.compile` (depth=32, width=64, batch=1)
+* **Dispatch-heavy GPT forward:** approximately **8.4× faster** than PyTorch eager and **4.1× faster** than `torch.compile` (`Nx=12`, `d_model=128`, batch=1, sequence length=32)
+* **Dispatch-heavy GPT decoding (full recomputation):** approximately **9.4× faster** than PyTorch eager and **4.6× faster** than `torch.compile`
+* **Compute-heavy GPT forward:** approximately **3.9× faster** than PyTorch eager and **1.7× faster** than `torch.compile` (`Nx=12`, `d_model=512`, batch=2, sequence length=10)
+* **Compute-heavy MLP:** near parity with `torch.compile`, where large matrix multiplications dominate execution time
+* **ResNet-18:** approximately **1.2× faster** than PyTorch eager and **1.5× faster** than `torch.compile`
+* **ResNet-50:** performance comparable to `torch.compile`, using cuDNN-backed convolution and pooling
+
+These figures summarize repeated development benchmark runs, not a finalized performance evaluation. GPT decoding benchmarks use **full-sequence recomputation without a KV cache**. The linked CUDA benchmark report currently documents an earlier, pre-library-integration implementation and will be updated separately.
 
 ## Current Status
 
 ### Compiler Pipeline
 
 * PyTorch FX graph tracing
-* Multi-stage pattern-based operator fusion pass
-* Transformer-specific graph rewrites and operator packing
-* Shape propagation pass
-* Static activation memory planner with arena allocation, buffer reuse, and alias tracking
+* Multi-stage, pattern-based operator fusion
+* Transformer-specific graph rewrites, including QKV packing and MHA/FeedForward fusion
+* Shape and dtype propagation
+* Static activation-memory planning with tensor lifetime analysis
+* Best-fit arena placement with buffer reuse, free-block coalescing, and alignment
+* Alias-aware memory planning and tensor binding
 * FlatBuffers graph serialization
 
 ### Runtime
 
-* RuntimeGraph execution engine with RuntimeNode function-pointer dispatch
-* FlatBuffer-free forward pass — graph deserialized once at construction, never accessed at runtime
-* Arena-backed tensor registry with alias binding
-* Transformer runtime support including MHA, FeedForward, LayerNorm, Embedding, and autoregressive GPT decoding
+* Native C++ `RuntimeGraph` execution engine with precomputed `RuntimeNode` function-pointer dispatch
+* Graph metadata deserialized once at engine construction; no FlatBuffers traversal in the forward pass
+* `MemoryManager` with arena-backed activations, tensor registry, and alias binding
+* Persistent model constants and input/output tensor management through LibTorch
+* Operator-specific execution caches constructed during engine initialization
+* Shared CUDA backend context for cuBLASLt and cuDNN handles and execution workspace
 * CPU and CUDA execution backends
-* End-to-end correctness validated against PyTorch:
-  * **CPU** — ResNet18, ResNet50, MLP, and Transformer/GPT workloads
-  * **CUDA** — MLP and Transformer/GPT workloads (Conv2D, Linear, LayerNorm, Add/Mul, Transpose, Narrow, Embedding, FeedForward, Multi-Head Attention); pooling (MaxPool2D/AvgPool2D/AdaptiveAvgPool2D) CUDA kernels not yet implemented
+* End-to-end output validation against PyTorch on MLP, ResNet, and GPT workloads
 
 ## Transformer Support
 
-Implemented from scratch in PyTorch:
+Implemented in PyTorch as model definitions and used to exercise the FXFusion compiler and runtime:
 
 * Transformer Encoder
 * Transformer Decoder
@@ -63,23 +71,29 @@ Implemented from scratch in PyTorch:
 * FeedForward Blocks
 * LayerNorm
 * Static Mask Generation
-* Autoregressive Decoding
+* Autoregressive Decoding with full-sequence recomputation
 
-Validated through FXFusion execution against PyTorch eager execution on both CPU and CUDA backends.
+FXFusion supports compiled execution of GPT-style Transformer workloads on CPU and CUDA. KV-cache-based incremental decoding is not yet implemented.
 
 ### CPU Backend
 
-* CPU backend supports CNN, MLP, and Transformer execution
-* CPU backend delegates compute-bound operators to LibTorch
-* Correctness validated on ResNet18, ResNet50, MLP, and GPT-style Transformer models
+* Supports CNN, MLP, and Transformer inference
+* Delegates selected compute-intensive operations to LibTorch and BLAS-backed implementations
+* Correctness exercised on ResNet-18, ResNet-50, MLP, and GPT-style models
 
 ### CUDA Backend
 
-* Backend dispatch infrastructure implemented
-* Hand-written, shared-memory-tiled CUDA kernels implemented and validated for: Conv2D, Linear, Linear+ReLU, Add, Add+ReLU, Mul, Transpose, Narrow, Embedding, LayerNorm, Add+LayerNorm, and FeedForward
-* Multi-Head Attention implemented as a single-kernel, FlashAttention-style fused kernel (online softmax, no materialized attention matrix) — the sole CUDA MHA path; the earlier five-kernel (scores/softmax/context) pipeline has been retired to a reference-only file
-* Pooling kernels (MaxPool2D, AvgPool2D, AdaptiveAvgPool2D) not yet implemented — CNN models relying on pooling (e.g. ResNet) remain CPU-only until these land
-* cuBLAS and cuBLASLt integration planned (current GEMM kernels are hand-written, not vendor-library-backed)
+* Native CUDA dispatch integrated with the C++ runtime
+* **cuBLASLt** execution for Linear, Linear+ReLU, FeedForward projections, and MHA QKV/output projections
+* Cached cuBLASLt operation descriptors, matrix layouts, selected algorithms, and epilogue configuration prepared at engine construction
+* **cuDNN Frontend** graph-based execution for Conv2D, Conv2D+ReLU, MaxPool2D, AvgPool2D, and supported AdaptiveAvgPool2D configurations
+* Cached cuDNN operation graphs and execution plans prepared during engine construction and reused for inference
+* Shared workspace management for CUDA library operations
+* Custom FlashAttention-style CUDA kernel for fused attention, using online softmax without materializing the full attention matrix
+* Custom CUDA implementations for elementwise operations, normalization, embedding, and tensor transformations
+* CUDA execution exercised end to end on MLP, ResNet-18, ResNet-50, and GPT workloads
+
+The earlier hand-written tiled GEMM and convolution implementations have been superseded by vendor-library-backed execution for the corresponding active operators. Custom CUDA kernels remain in use where appropriate, including the fused attention computation.
 
 ## Supported Operators
 
@@ -88,13 +102,10 @@ Validated through FXFusion execution against PyTorch eager execution on both CPU
 *(CPU and CUDA)*
 
 * Conv2D
-* Conv2D + ReLU 
-
-*(CPU)*
-
-* MaxPool2D 
-* AvgPool2D 
-* AdaptiveAvgPool2D 
+* Conv2D + ReLU
+* MaxPool2D
+* AvgPool2D
+* AdaptiveAvgPool2D (supported configurations)
 
 ### Elementwise / Shared
 
@@ -103,11 +114,11 @@ Validated through FXFusion execution against PyTorch eager execution on both CPU
 * Add
 * Add + ReLU
 * Mul
-* Relu
+* ReLU
 
 ### Transformer
 
-*(CPU and CUDA)*
+*(CPU and CUDA, within supported graph patterns)*
 
 * Embedding
 * Linear
@@ -119,18 +130,24 @@ Validated through FXFusion execution against PyTorch eager execution on both CPU
 * Transpose
 * Narrow
 * Size
+* View / alias operations
+
+Additional primitive operator coverage is being developed for executing fully unfused Transformer graphs.
 
 ## Supported Fusion Patterns
 
 * Conv2D + BatchNorm + ReLU
-* Conv2D + BatchNorm
+* Conv2D + BatchNorm (inference-time parameter folding)
 * Conv2D + ReLU
 * Linear + ReLU
 * Add + ReLU
-* LayerNorm
 * Add + LayerNorm
+* QKV projection packing
+* Attention
+* Multi-Head Attention (MHA)
 * FeedForward (Linear + ReLU + Linear)
-* QKV Linear Packing
+
+Standalone operations such as Linear, Conv2D, ReLU, LayerNorm, and Embedding are also lowered into FXFusion-native operators.
 
 ## Architecture
 
@@ -141,38 +158,52 @@ PyTorch Model
 FX Graph Tracing
       │
       ▼
-Optimization Pass Pipeline
- ├── Operator Fusion
- ├── Transformer Graph Rewrites
+Compiler Pass Pipeline
+ ├── Operator Lowering and Graph Rewriting
+ ├── Multi-Stage Operator Fusion
  ├── Shape Propagation
- └── Memory Planning (arena, reuse, alias)
+ └── Static Memory Planning
+      ├── Tensor Lifetime Analysis
+      ├── Best-Fit Arena Placement and Reuse
+      └── Alias Tracking
       │
       ▼
 FlatBuffers Serialization
       │
       ▼
-C++ Runtime Engine
- ├── RuntimeGraph (built once from FlatBuffers)
- │    └── RuntimeNode (op_code, input_ids, output_ids, params, KernelFn*)
+C++ Execution Engine (constructed once)
+ ├── RuntimeGraph
+ │    └── RuntimeNode (OpCode, TensorIds, Params, KernelFn*)
  │
  ├── MemoryManager
- │    ├── Arena Allocation
+ │    ├── Activation Arena
  │    ├── Tensor Registry
+ │    ├── Constant and Input Binding
  │    └── Alias Binding
  │
- └── Backend Dispatch (CPU / CUDA via function pointer)
+ └── Backend Context and Operator Caches
+      ├── CPU / LibTorch
+      └── CUDA
+           ├── cuBLASLt Descriptors and Algorithms
+           ├── cuDNN Frontend Graphs and Execution Plans
+           ├── Shared CUDA Workspace
+           └── Custom CUDA Kernels
       │
       ▼
-CPU / CUDA Kernels
+Precomputed Native Operator Dispatch
+      │
+      ▼
+Inference Outputs
 ```
 
 ## Tech Stack
 
-* Languages: Python, C++17, CUDA
-* Frameworks: PyTorch FX, LibTorch
-* Serialization: FlatBuffers
-* Build: CMake
-* GPU Libraries (in progress): cuBLAS, cuBLASLt
+* **Languages:** Python, C++17, CUDA
+* **Frameworks:** PyTorch FX, LibTorch
+* **Serialization:** FlatBuffers
+* **Build:** CMake
+* **GPU Libraries:** cuBLASLt, cuDNN, cuDNN Frontend, CUDA Runtime
+* **Testing and Benchmarks:** pytest, PyTorch eager, `torch.compile`
 
 ## Testing
 
@@ -184,32 +215,35 @@ pytest py/tests/ -v
 make test
 ```
 
-* `test_ops.py` — end-to-end correctness for all operators and models, parametrized across CPU and CUDA (when available)
+* `test_ops.py` — end-to-end correctness for operators and models across supported CPU/CUDA configurations
 * `test_fusion.py` — fusion pattern matching and correctness
-* `test_memory_plan.py` — arena sizing, offset alignment, buffer reuse, alias tracking, and liveness analysis
-* `test_shape_prop.py` — output shape and dtype propagation
+* `test_memory_plan.py` — arena size, offset alignment, reuse, alias tracking, and liveness analysis
+* `test_shape_prop.py` — tensor shape and dtype propagation
 
 ## Future Work
 
+### Compiler and Runtime
+
+* Strict one-to-one primitive lowering and a fully unfused execution configuration
+* Additional primitive operators for BatchNorm, GELU, MatMul, and attention decomposition
+* Controlled fusion, dispatch, and memory-reuse configurations
+* KV-cache support for incremental GPT decoding
+* Multi-stream execution and CUDA Graph integration
+* Extended dynamic-shape support
+
 ### CUDA Backend
 
-* Custom pooling kernels (MaxPool2D, AvgPool2D, AdaptiveAvgPool2D) with shared-memory tiling
-* cuBLASLt GEMM with fused bias + ReLU epilogues for large matmuls
-* Occupancy-aware launch configuration, profiled with Nsight Compute
+* Further profiling and kernel tuning using Nsight Systems and Nsight Compute
+* Broader operator and shape coverage
+* Additional CUDA execution and workspace optimizations
 
-### Models
+### Models and Benchmarking
 
 * Vision Transformers (ViT)
-* BERT-style encoder architectures
-* LLaMA-style decoder architectures
-
-### Runtime
-
-* KV-cache support for autoregressive decoding
-* Runtime graph caching
-* Multi-stream execution
-* CUDA Graph integration
+* Expanded CPU/CUDA benchmark coverage across model sizes and batch sizes
+* End-to-end latency distributions and process-level GPU memory profiling
+* Comparisons with specialized inference runtimes
 
 ## Goals
 
-The long-term goal of FXFusion is to explore the design and implementation of modern ML compiler and runtime systems, including graph optimization, memory planning, operator fusion, graph lowering, kernel generation, and custom CPU/GPU execution strategies for neural network inference.
+The long-term goal of FXFusion is to explore the design and implementation of machine-learning compiler and runtime systems, with an emphasis on ahead-of-time graph execution, graph optimization, memory planning, operator fusion, backend integration, and efficient CPU/GPU inference.
