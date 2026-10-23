@@ -9,7 +9,7 @@ FXFusion explores ahead-of-time inference execution, activation-memory reuse, pr
 Benchmark reports:
 
 * [Benchmark Report (CPU)](./benchmarks/README_CPU.md)
-* [Benchmark Report (CUDA)](./benchmarks/README_CUDA.md)
+* [Benchmark Report (CUDA)](./benchmarks/README_CUDA.md) **(Update in progress — results predate cuBLASLt and cuDNN integration)**
 
 ### CPU Backend
 
